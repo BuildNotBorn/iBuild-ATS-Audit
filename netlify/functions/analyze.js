@@ -1,5 +1,3 @@
-const { getStore } = require('@netlify/blobs');
-
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -22,34 +20,6 @@ exports.handler = async (event) => {
   };
 
   try {
-    const ip = event.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-               event.headers['client-ip'] || 
-               'unknown';
-
-    const today = new Date().toISOString().split('T')[0];
-    const key = `ip_${ip}_${today}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-
-    const store = getStore('ats-rate-limit');
-
-    let used = false;
-    try {
-      const existing = await store.get(key);
-      if (existing) used = true;
-    } catch {
-      used = false;
-    }
-
-    if (used) {
-      return {
-        statusCode: 429,
-        headers,
-        body: JSON.stringify({
-          error: 'RATE_LIMIT',
-          message: 'Une analyse par jour et par appareil. Reviens demain — ou DM @BuildNotBorn.FiFo pour ton rapport complet.'
-        })
-      };
-    }
-
     const body = JSON.parse(event.body);
     const { cvText, cvImage, jobLabel } = body;
 
@@ -122,12 +92,6 @@ exports.handler = async (event) => {
       (result.scores.keywords || 0) +
       (result.scores.completeness || 0)
     );
-
-    try {
-      await store.set(key, '1', { ttl: 86400 });
-    } catch (e) {
-      console.log('Store write failed:', e.message);
-    }
 
     return {
       statusCode: 200,
