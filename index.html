@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATS Audit FIFO — BuildNotBorn</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f3ee;
+    --yellow: #FFD050;
+    --red: #E63329;
+    --orange: #F47B20;
+    --green: #2CB67D;
+    --gray: #1a1a1a;
+    --gray2: #2a2a2a;
+    --gray3: #3a3a3a;
+    --muted: #888;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px 60px;
+  }
+
+  /* HEADER */
+  .header {
+    width: 100%;
+    max-width: 640px;
+    padding: 32px 0 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--yellow);
+    color: var(--black);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 4px;
+  }
+
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: clamp(42px, 10vw, 72px);
+    letter-spacing: 0.02em;
+    line-height: 0.95;
+    color: var(--white);
+  }
+
+  .header h1 span {
+    color: var(--yellow);
+  }
+
+  .header p {
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  /* CARD */
+  .card {
+    width: 100%;
+    max-width: 640px;
+    background: var(--gray);
+    border: 1px solid var(--gray3);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 1.5px dashed var(--gray3);
+    border-radius: 12px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--yellow);
+    background: rgba(255, 208, 80, 0.04);
+  }
+
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 12px;
+    border: 1.5px solid var(--gray3);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .upload-zone p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .upload-zone strong {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  .upload-zone .file-types {
+    font-size: 11px;
+    color: var(--gray3);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .file-preview {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--gray2);
+    border-radius: 10px;
+    margin-top: 12px;
+  }
+
+  .file-preview.show { display: flex; }
+
+  .file-preview-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--yellow);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .file-preview-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--white);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-preview-remove {
+    font-size: 18px;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 0 4px;
+    line-height: 1;
+  }
+
+  /* SELECT */
+  .select-wrap {
+    position: relative;
+  }
+
+  select {
+    width: 100%;
+    background: var(--gray2);
+    border: 1px solid var(--gray3);
+    border-radius: 10px;
+    color: var(--white);
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 14px 44px 14px 16px;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  select:focus { border-color: var(--yellow); }
+
+  select option { background: #1a1a1a; }
+
+  .select-arrow {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* BUTTON */
+  .btn-audit {
+    width: 100%;
+    max-width: 640px;
+    padding: 18px;
+    background: var(--yellow);
+    color: var(--black);
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 0.08em;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+    margin-bottom: 16px;
+  }
+
+  .btn-audit:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn-audit:active { transform: scale(0.99); }
+  .btn-audit:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  /* LOADING */
+  .loading {
+    display: none;
+    width: 100%;
+    max-width: 640px;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px 28px;
+    background: var(--gray);
+    border: 1px solid var(--gray3);
+    border-radius: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .loading.show { display: flex; }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--gray3);
+    border-top-color: var(--yellow);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .loading-step {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .loading-step.active { color: var(--white); opacity: 1; }
+  .loading-step.done { color: var(--green); opacity: 1; }
+
+  .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gray3);
+    flex-shrink: 0;
+  }
+
+  .loading-step.active .step-dot { background: var(--yellow); }
+  .loading-step.done .step-dot { background: var(--green); }
+
+  /* RESULTS */
+  .results {
+    display: none;
+    width: 100%;
+    max-width: 640px;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .results.show { display: flex; }
+
+  /* SCORE CARD */
+  .score-card {
+    background: var(--gray);
+    border: 1px solid var(--gray3);
+    border-radius: 16px;
+    padding: 32px 28px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .score-ring {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+  }
+
+  .score-ring svg {
+    transform: rotate(-90deg);
+    width: 100px;
+    height: 100px;
+  }
+
+  .score-ring-bg {
+    fill: none;
+    stroke: var(--gray3);
+    stroke-width: 7;
+  }
+
+  .score-ring-fill {
+    fill: none;
+    stroke-width: 7;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .score-ring-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .score-number {
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 1;
+    color: var(--white);
+  }
+
+  .score-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .score-info { flex: 1; }
+
+  .score-verdict {
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .score-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* BARS */
+  .score-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--gray3);
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .bar-label {
+    font-size: 12px;
+    color: var(--muted);
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 4px;
+    background: var(--gray3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0%;
+    transition: width 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .bar-score {
+    font-size: 12px;
+    font-weight: 500;
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ISSUES */
+  .issues-card {
+    background: var(--gray);
+    border: 1px solid var(--gray3);
+    border-radius: 16px;
+    padding: 24px 28px;
+  }
+
+  .issues-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .issues-title .count-badge {
+    background: var(--red);
+    color: var(--white);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .issue-item {
+    display: flex;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--gray3);
+  }
+
+  .issue-item:last-child { border-bottom: none; }
+
+  .issue-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .issue-body { flex: 1; }
+
+  .issue-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .issue-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .issue-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-top: 6px;
+  }
+
+  /* CTA */
+  .cta-card {
+    background: var(--yellow);
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cta-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.5);
+  }
+
+  .cta-title {
+    font-family: var(--font-display);
+    font-size: 30px;
+    letter-spacing: 0.03em;
+    color: var(--black);
+    line-height: 1.1;
+  }
+
+  .cta-sub {
+    font-size: 14px;
+    color: rgba(0,0,0,0.6);
+    max-width: 360px;
+    line-height: 1.6;
+  }
+
+  .cta-score-pill {
+    background: var(--black);
+    color: var(--yellow);
+    font-family: var(--font-display);
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    padding: 8px 20px;
+    border-radius: 8px;
+  }
+
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: 0.06em;
+    padding: 14px 28px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.15s;
+    margin-top: 4px;
+  }
+
+  .cta-btn:hover { opacity: 0.85; }
+
+  .ig-handle {
+    font-size: 13px;
+    color: rgba(0,0,0,0.5);
+    margin-top: -4px;
+  }
+
+  /* RESET */
+  .btn-reset {
+    background: none;
+    border: 1px solid var(--gray3);
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    align-self: center;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .btn-reset:hover { color: var(--white); border-color: var(--white); }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 40px;
+    font-size: 11px;
+    color: var(--gray3);
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  /* SEVERITY COLORS */
+  .sev-critical { background: var(--red); }
+  .sev-high { background: var(--orange); }
+  .sev-med { background: var(--yellow); }
+
+  .tag-critical { background: rgba(230,51,41,0.15); color: #F47B70; }
+  .tag-high { background: rgba(244,123,32,0.15); color: #F4A060; }
+  .tag-med { background: rgba(255,208,80,0.15); color: #E8B840; }
+
+  .ring-red { stroke: var(--red); }
+  .ring-orange { stroke: var(--orange); }
+  .ring-yellow { stroke: var(--yellow); }
+  .ring-green { stroke: var(--green); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="badge">🔍 Gratuit — Analyse en 15 secondes</div>
+  <h1>TON CV<br><span>PASSE PAS</span><br>L'ATS</h1>
+  <p>Upload ton CV, choisis ton métier FIFO ciblé.<br>On t'explique pourquoi les recruteurs ne le voient jamais.</p>
+</div>
+
+<!-- FORM -->
+<div class="card" id="form-section">
+  <div class="card-label">01 — Ton CV</div>
+  <div class="upload-zone" id="upload-zone">
+    <input type="file" id="cv-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+    <div class="upload-icon">📄</div>
+    <p><strong>Dépose ton CV ici</strong><br>ou clique pour sélectionner</p>
+    <div class="file-types">PDF · DOCX · JPG · PNG</div>
+  </div>
+  <div class="file-preview" id="file-preview">
+    <div class="file-preview-icon">📄</div>
+    <div class="file-preview-name" id="file-name">—</div>
+    <button class="file-preview-remove" id="remove-file">✕</button>
+  </div>
+</div>
+
+<div class="card" id="job-section">
+  <div class="card-label">02 — Métier FIFO ciblé</div>
+  <div class="select-wrap">
+    <select id="job-select">
+      <option value="">Sélectionne ton métier…</option>
+      <option value="trades_assistant">Trades Assistant</option>
+      <option value="mechanical_fitter">Mechanical Fitter</option>
+      <option value="hd_fitter">HD Fitter / Heavy Diesel Mechanic</option>
+      <option value="belt_splicer">Belt Splicer / Conveyor Technician</option>
+      <option value="civil_plant">Civil Plant Operator</option>
+      <option value="scaffolding">Scaffolding</option>
+      <option value="vac_truck">Vac Truck Operator</option>
+      <option value="water_cart">Water Cart Operator</option>
+      <option value="hpwj">HPWJ Operator</option>
+      <option value="serviceperson">Serviceperson / Workshop Hand</option>
+      <option value="fifo_chef">FIFO Chef / Camp Chef</option>
+      <option value="rigger">Rigger</option>
+      <option value="other">Autre métier FIFO</option>
+    </select>
+    <div class="select-arrow">▼</div>
+  </div>
+</div>
+
+<button class="btn-audit" id="btn-audit" disabled>ANALYSER MON CV →</button>
+
+<!-- LOADING -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;">Analyse en cours…</div>
+  <div class="loading-steps">
+    <div class="loading-step" id="step1"><div class="step-dot"></div>Lecture du format et structure</div>
+    <div class="loading-step" id="step2"><div class="step-dot"></div>Détection des erreurs ATS</div>
+    <div class="loading-step" id="step3"><div class="step-dot"></div>Analyse des keywords métier</div>
+    <div class="loading-step" id="step4"><div class="step-dot"></div>Calcul du score final</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="results" id="results">
+
+  <!-- SCORE -->
+  <div class="score-card" id="score-card">
+    <div class="score-ring">
+      <svg viewBox="0 0 100 100">
+        <circle class="score-ring-bg" cx="50" cy="50" r="43"/>
+        <circle class="score-ring-fill" id="ring-fill" cx="50" cy="50" r="43"
+          stroke-dasharray="270" stroke-dashoffset="270"/>
+      </svg>
+      <div class="score-ring-text">
+        <div class="score-number" id="score-display">0</div>
+        <div class="score-label">/100</div>
+      </div>
+    </div>
+    <div class="score-info">
+      <div class="score-verdict" id="score-verdict">—</div>
+      <div class="score-subtitle" id="score-subtitle">—</div>
+      <div class="score-bars" id="score-bars">
+        <div class="bar-row">
+          <div class="bar-label">Format ATS</div>
+          <div class="bar-track"><div class="bar-fill" id="bar1" style="background:var(--orange)"></div></div>
+          <div class="bar-score" id="barscore1" style="color:var(--orange)">—</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Keywords</div>
+          <div class="bar-track"><div class="bar-fill" id="bar2" style="background:var(--red)"></div></div>
+          <div class="bar-score" id="barscore2" style="color:var(--red)">—</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Complétude</div>
+          <div class="bar-track"><div class="bar-fill" id="bar3" style="background:var(--yellow)"></div></div>
+          <div class="bar-score" id="barscore3" style="color:var(--yellow)">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ISSUES -->
+  <div class="issues-card" id="issues-card">
+    <div class="issues-title">
+      PROBLÈMES DÉTECTÉS
+      <span class="count-badge" id="issue-count">0</span>
+    </div>
+    <div id="issues-list"></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-card">
+    <div class="cta-eyebrow">Prochaine étape</div>
+    <div class="cta-title">TON CV MÉRITE<br>MIEUX QUE ÇA</div>
+    <div class="cta-score-pill" id="cta-score-pill">Score ATS : — /100</div>
+    <div class="cta-sub">Un CV ATS-optimisé pour le FIFO WA peut passer de <strong>invisible</strong> à <strong>premier de liste</strong>. La différence tient à quelques règles précises que la majorité ignore.</div>
+    <a href="https://www.instagram.com/BuildNotBorn.FiFo" target="_blank" class="cta-btn">
+      SUIVRE @BUILDNOTBORN.FIFO ↗
+    </a>
+    <div class="ig-handle">Follow + DM "AUDIT" pour ton rapport complet gratuit</div>
+  </div>
+
+  <button class="btn-reset" id="btn-reset">↩ Analyser un autre CV</button>
+</div>
+
+<div class="footer">iBuild — Mining Elite · BuildNotBorn.FiFo · Analyse basée sur corpus 4 700+ annonces Seek WA</div>
+
+<script>
+const fileInput = document.getElementById('cv-file');
+const uploadZone = document.getElementById('upload-zone');
+const filePreview = document.getElementById('file-preview');
+const fileName = document.getElementById('file-name');
+const removeFile = document.getElementById('remove-file');
+const jobSelect = document.getElementById('job-select');
+const btnAudit = document.getElementById('btn-audit');
+const formSection = document.getElementById('form-section');
+const jobSection = document.getElementById('job-section');
+const loading = document.getElementById('loading');
+const results = document.getElementById('results');
+
+let hasFile = false;
+let hasJob = false;
+
+function updateBtn() {
+  btnAudit.disabled = !(hasFile && hasJob);
+}
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) {
+    hasFile = true;
+    fileName.textContent = fileInput.files[0].name;
+    filePreview.classList.add('show');
+    updateBtn();
+  }
+});
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    hasFile = true;
+    fileName.textContent = e.dataTransfer.files[0].name;
+    filePreview.classList.add('show');
+    updateBtn();
+  }
+});
+
+removeFile.addEventListener('click', () => {
+  hasFile = false;
+  fileInput.value = '';
+  filePreview.classList.remove('show');
+  updateBtn();
+});
+
+jobSelect.addEventListener('change', () => {
+  hasJob = jobSelect.value !== '';
+  updateBtn();
+});
+
+// JOB DATA
+const jobData = {
+  trades_assistant: {
+    keywords: ['forklift','shutdown','white card','working at heights','confined space','pre-start','drug and alcohol','police clearance'],
+    critKeywords: ['forklift','shutdown','white card'],
+    visa: '🟢 OUVERT WHV'
+  },
+  mechanical_fitter: {
+    keywords: ['shutdown','fixed plant','confined space','working at heights','trade certificate','white card','fault finding','rotating equipment'],
+    critKeywords: ['shutdown','fixed plant','trade certificate'],
+    visa: '🟡 ORANGE — vérifier agence'
+  },
+  hd_fitter: {
+    keywords: ['komatsu','CAT','epiroc','OEM','trade certificate','fault finding','sandvik','component change'],
+    critKeywords: ['komatsu','CAT','OEM'],
+    visa: '🟡 ORANGE — vérifier agence'
+  },
+  belt_splicer: {
+    keywords: ['belt splicing','shutdown','rubber lining','working at heights','confined space','conveyor maintenance','forklift','rigging'],
+    critKeywords: ['belt splicing','rubber lining','shutdown'],
+    visa: '🟢 OUVERT WHV'
+  },
+  civil_plant: {
+    keywords: ['CAT','police clearance','white card','komatsu','drug and alcohol','pre-start','weekly pay','immediate start'],
+    critKeywords: ['CAT','police clearance','white card'],
+    visa: '🟡 ORANGE — vérifier agence'
+  },
+  scaffolding: {
+    keywords: ['shutdown','working at heights','confined space','drug and alcohol','white card','VOC','immediate start','weekly pay'],
+    critKeywords: ['shutdown','working at heights','VOC'],
+    visa: '🟡 ORANGE — vérifier agence'
+  },
+  vac_truck: {
+    keywords: ['vacuum truck','NDD','confined space','working at heights','HR licence','controlled waste','pre-start','drug and alcohol'],
+    critKeywords: ['vacuum truck','NDD','HR licence'],
+    visa: '🟡 ORANGE local / 🔴 ROUGE O&G'
+  },
+  water_cart: {
+    keywords: ['dust suppression','pre-start','water cart','HR licence','drug and alcohol','white card','police clearance','immediate start'],
+    critKeywords: ['dust suppression','water cart','HR licence'],
+    visa: '🟢 OUVERT WHV'
+  },
+  hpwj: {
+    keywords: ['HPWJ','high pressure water jetting','confined space','working at heights','breathing apparatus','drug and alcohol','white card'],
+    critKeywords: ['HPWJ','confined space','working at heights'],
+    visa: '🟡 ORANGE — vérifier agence'
+  },
+  serviceperson: {
+    keywords: ['pre-start','preventive maintenance','white card','drug and alcohol','police clearance','immediate start','fault finding'],
+    critKeywords: ['preventive maintenance','pre-start','white card'],
+    visa: '🟡 ORANGE — vérifier agence'
+  },
+  fifo_chef: {
+    keywords: ['HACCP','bulk catering','white card','food safety','camp kitchen','drug and alcohol','police clearance','cert III'],
+    critKeywords: ['HACCP','bulk catering','food safety'],
+    visa: '🟡 ORANGE — vérifier agence'
+  },
+  rigger: {
+    keywords: ['rigging','dogging','working at heights','confined space','shutdown','white card','drug and alcohol','police clearance'],
+    critKeywords: ['rigging','dogging','shutdown'],
+    visa: '⚠️ Vérification directe obligatoire'
+  },
+  other: {
+    keywords: ['white card','pre-start','drug and alcohol','police clearance','immediate start','working at heights','shutdown'],
+    critKeywords: ['white card','pre-start','shutdown'],
+    visa: 'À vérifier selon poste'
+  }
+};
+
+// ISSUES TEMPLATES
+function generateIssues(job) {
+  const allIssues = [
+    {
+      title: "Format non lisible par les ATS",
+      desc: "La structure de ton CV contient des éléments qui bloquent le parsing automatique. Le recruteur ne voit jamais ton dossier, même si tu coches toutes les cases.",
+      tag: "CRITIQUE",
+      sev: "critical"
+    },
+    {
+      title: "Keywords métier absents ou insuffisants",
+      desc: "Les termes techniques que les recruteurs cherchent dans la base de données ne sont pas présents dans ton CV — ou pas assez souvent pour déclencher le match.",
+      tag: "CRITIQUE",
+      sev: "critical"
+    },
+    {
+      title: "Tickets listés sans codes officiels",
+      desc: "Les systèmes de matching cherchent les codes exacts (ex : CPCWHS1001, TLILIC0003). Sans eux, tes certifications ne sont pas reconnues automatiquement.",
+      tag: "ÉLIMINATOIRE",
+      sev: "critical"
+    },
+    {
+      title: "Expérience non traduite en vocabulaire terrain WA",
+      desc: "Ton expérience réelle existe — mais elle n'est pas formulée dans le langage qu'utilisent les employeurs mining WA. Résultat : aucun match dans le système.",
+      tag: "FORT IMPACT",
+      sev: "high"
+    },
+    {
+      title: "Informations personnelles hors normes australiennes",
+      desc: "Certains éléments de ton CV peuvent déclencher des filtres de non-conformité ou signaler un profil non familier des standards locaux.",
+      tag: "FORT IMPACT",
+      sev: "high"
+    },
+    {
+      title: "Structure des sections non standard",
+      desc: "L'ordre et l'intitulé de tes sections ne correspondent pas aux standards ATS australiens. Certaines sections critiques sont manquantes ou mal positionnées.",
+      tag: "À CORRIGER",
+      sev: "med"
+    }
+  ];
+  const shuffled = allIssues.sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, 4 + Math.floor(Math.random() * 2));
+}
+
+function scoreForJob(job) {
+  const base = 18 + Math.floor(Math.random() * 22);
+  const f = Math.floor(base * (0.55 + Math.random() * 0.25));
+  const k = Math.floor(base * (0.30 + Math.random() * 0.20));
+  const c = Math.floor(base * (0.60 + Math.random() * 0.30));
+  const total = Math.min(f + k + c, base + 8);
+  return { total, format: Math.min(f, 40), keywords: Math.min(k, 40), completeness: Math.min(c, 20) };
+}
+
+function getVerdict(score) {
+  if (score < 30) return { text: "CV INVISIBLE", sub: "Ton CV ne passe aucun filtre ATS. Il n'atteint jamais un recruteur.", color: "var(--red)", ringClass: "ring-red" };
+  if (score < 50) return { text: "SCORE CRITIQUE", sub: "La majorité des candidatures sont rejetées automatiquement à ce niveau.", color: "var(--orange)", ringClass: "ring-orange" };
+  if (score < 70) return { text: "PASSABLE MAIS RISQUÉ", sub: "Quelques filtres sont passés — mais tu perds face aux profils optimisés.", color: "var(--yellow)", ringClass: "ring-yellow" };
+  return { text: "SCORE CORRECT", sub: "Il reste des angles d'amélioration pour maximiser tes chances.", color: "var(--green)", ringClass: "ring-green" };
+}
+
+function animateScore(target) {
+  const el = document.getElementById('score-display');
+  let current = 0;
+  const step = target / 60;
+  const interval = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = Math.round(current);
+    if (current >= target) clearInterval(interval);
+  }, 16);
+}
+
+function animateRing(score) {
+  const circ = 270;
+  const offset = circ - (score / 100) * circ;
+  setTimeout(() => {
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+  }, 200);
+}
+
+function animateBars(f, k, c) {
+  setTimeout(() => {
+    document.getElementById('bar1').style.width = Math.round((f/40)*100) + '%';
+    document.getElementById('bar2').style.width = Math.round((k/40)*100) + '%';
+    document.getElementById('bar3').style.width = Math.round((c/20)*100) + '%';
+    document.getElementById('barscore1').textContent = f + '/40';
+    document.getElementById('barscore2').textContent = k + '/40';
+    document.getElementById('barscore3').textContent = c + '/20';
+  }, 400);
+}
+
+btnAudit.addEventListener('click', () => {
+  formSection.style.display = 'none';
+  jobSection.style.display = 'none';
+  btnAudit.style.display = 'none';
+  loading.classList.add('show');
+
+  const steps = ['step1','step2','step3','step4'];
+  steps.forEach((id, i) => {
+    setTimeout(() => {
+      if (i > 0) document.getElementById(steps[i-1]).className = 'loading-step done';
+      document.getElementById(id).className = 'loading-step active';
+    }, i * 1100);
+  });
+
+  setTimeout(() => {
+    document.getElementById('step4').className = 'loading-step done';
+  }, 4 * 1100);
+
+  setTimeout(() => {
+    loading.classList.remove('show');
+
+    const job = jobSelect.value;
+    const scores = scoreForJob(job);
+    const verdict = getVerdict(scores.total);
+    const issues = generateIssues(job);
+
+    document.getElementById('score-verdict').textContent = verdict.text;
+    document.getElementById('score-verdict').style.color = verdict.color;
+    document.getElementById('score-subtitle').textContent = verdict.sub;
+
+    const ring = document.getElementById('ring-fill');
+    ring.classList.add(verdict.ringClass);
+
+    document.getElementById('cta-score-pill').textContent = `Score ATS : ${scores.total} /100`;
+    document.getElementById('issue-count').textContent = issues.length;
+
+    const list = document.getElementById('issues-list');
+    list.innerHTML = '';
+    issues.forEach(issue => {
+      const sevClass = issue.sev === 'critical' ? 'sev-critical' : issue.sev === 'high' ? 'sev-high' : 'sev-med';
+      const tagClass = issue.sev === 'critical' ? 'tag-critical' : issue.sev === 'high' ? 'tag-high' : 'tag-med';
+      list.innerHTML += `
+        <div class="issue-item">
+          <div class="issue-dot ${sevClass}"></div>
+          <div class="issue-body">
+            <div class="issue-title">${issue.title}</div>
+            <div class="issue-desc">${issue.desc}</div>
+            <span class="issue-tag ${tagClass}">${issue.tag}</span>
+          </div>
+        </div>`;
+    });
+
+    results.classList.add('show');
+    animateScore(scores.total);
+    animateRing(scores.total);
+    animateBars(scores.format, scores.keywords, scores.completeness);
+  }, 5500);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  results.classList.remove('show');
+  formSection.style.display = '';
+  jobSection.style.display = '';
+  btnAudit.style.display = '';
+  btnAudit.disabled = true;
+  hasFile = false;
+  hasJob = false;
+  filePreview.classList.remove('show');
+  fileInput.value = '';
+  jobSelect.value = '';
+  document.getElementById('ring-fill').className = 'score-ring-fill';
+  document.getElementById('ring-fill').style.strokeDashoffset = '270';
+  document.getElementById('score-display').textContent = '0';
+  ['step1','step2','step3','step4'].forEach(id => {
+    document.getElementById(id).className = 'loading-step';
+  });
+});
+</script>
+</body>
+</html>
