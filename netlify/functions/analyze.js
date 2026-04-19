@@ -1,3 +1,5 @@
+const { getStore } = require('@netlify/blobs');
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -20,6 +22,34 @@ exports.handler = async (event) => {
   };
 
   try {
+    const ip = event.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+               event.headers['client-ip'] || 
+               'unknown';
+
+    const today = new Date().toISOString().split('T')[0];
+    const key = `ip_${ip}_${today}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const store = getStore('ats-rate-limit');
+
+    let used = false;
+    try {
+      const existing = await store.get(key);
+      if (existing) used = true;
+    } catch {
+      used = false;
+    }
+
+    if (used) {
+      return {
+        statusCode: 429,
+        headers,
+        body: JSON.stringify({
+          error: 'RATE_LIMIT',
+          message: 'Une analyse par jour et par appareil. Reviens demain — ou DM @BuildNotBorn.FiFo pour ton rapport complet.'
+        })
+      };
+    }
+
     const body = JSON.parse(event.body);
     const { cvText, cvImage, jobLabel } = body;
 
@@ -30,7 +60,7 @@ exports.handler = async (event) => {
     if (cvImage && cvImage.data) {
       const mediaType = cvImage.mediaType || 'image/jpeg';
       const validImage = ['image/jpeg','image/png','image/gif','image/webp'].includes(mediaType);
-      
+
       if (validImage) {
         content = [
           {
@@ -47,18 +77,13 @@ exports.handler = async (event) => {
           }
         ];
       } else {
-        content = `Analyse ce CV pour un poste de ${jobLabel} en FIFO WA. Je ne peux pas lire l image mais genere une analyse type. Reponds avec exactement ce JSON : {"scores":{"format":10,"keywords":8,"completeness":10,"total":28},"issues":[{"title":"Format non analysable","desc":"Le fichier fourni ne peut pas etre analyse automatiquement. Un audit manuel est recommande.","severity":"critical","tag":"CRITIQUE"}],"verdict":"CV necessite un audit manuel complet","improvement_areas":["Verifier le format du fichier","Soumettre en JPG ou PNG","Contacter BuildNotBorn pour audit manuel"]}`;
+        content = `Genere une analyse ATS type pour un poste de ${jobLabel} FIFO WA. Reponds : {"scores":{"format":10,"keywords":8,"completeness":10,"total":28},"issues":[{"title":"Format non analysable","desc":"Le fichier fourni ne peut pas etre analyse. Soumettre en JPG ou PNG.","severity":"critical","tag":"CRITIQUE"}],"verdict":"CV necessite un audit manuel","improvement_areas":["Soumettre en JPG ou PNG","Verifier le format du fichier","Contacter BuildNotBorn pour audit manuel"]}`;
       }
     } else if (cvText) {
       content = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia. CONTENU : ${cvText}. Evalue sur 3 criteres : 1. FORMAT PARSEABILITY sur 40pts. 2. KEYWORD DENSITY sur 40pts. 3. SECTION COMPLETENESS sur 20pts. Reponds avec exactement ce JSON : {"scores":{"format":12,"keywords":8,"completeness":10,"total":30},"issues":[{"title":"Titre","desc":"Description.","severity":"critical","tag":"CRITIQUE"}],"verdict":"Phrase choc","improvement_areas":["angle 1","angle 2","angle 3"]}`;
     } else {
       content = `Genere une analyse ATS type pour un poste de ${jobLabel} FIFO WA sans CV fourni. Reponds : {"scores":{"format":8,"keywords":6,"completeness":8,"total":22},"issues":[{"title":"Aucun CV detecte","desc":"Le fichier na pas pu etre lu. Merci de reessayer en JPG ou PNG.","severity":"critical","tag":"CRITIQUE"}],"verdict":"CV non detecte - reessayer","improvement_areas":["Soumettre en format JPG","Verifier la taille du fichier","Contacter BuildNotBorn"]}`;
     }
-
-    const messages = [{
-      role: 'user',
-      content: content
-    }];
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -71,7 +96,7 @@ exports.handler = async (event) => {
         model: 'claude-opus-4-6',
         max_tokens: 1000,
         system: systemPrompt,
-        messages: messages
+        messages: [{ role: 'user', content }]
       })
     });
 
@@ -88,11 +113,8 @@ exports.handler = async (event) => {
       result = JSON.parse(text);
     } catch {
       const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        result = JSON.parse(match[0]);
-      } else {
-        throw new Error('JSON invalide: ' + text.substring(0, 200));
-      }
+      if (match) result = JSON.parse(match[0]);
+      else throw new Error('JSON invalide: ' + text.substring(0, 200));
     }
 
     result.scores.total = Math.min(100,
@@ -100,6 +122,12 @@ exports.handler = async (event) => {
       (result.scores.keywords || 0) +
       (result.scores.completeness || 0)
     );
+
+    try {
+      await store.set(key, '1', { ttl: 86400 });
+    } catch (e) {
+      console.log('Store write failed:', e.message);
+    }
 
     return {
       statusCode: 200,
