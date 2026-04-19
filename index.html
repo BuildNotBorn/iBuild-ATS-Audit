@@ -804,6 +804,29 @@ btnAudit.addEventListener('click', async () => {
       body: JSON.stringify(payload)
     });
 
+if (response.status === 429) {
+      const data = await response.json();
+      loading.classList.remove('show');
+      formSection.style.display = '';
+      jobSection.style.display = '';
+      btnAudit.style.display = '';
+      errorCard.innerHTML = `
+        <div style="font-size:22px;margin-bottom:8px;">⏳</div>
+        <div style="font-size:15px;font-weight:500;color:var(--white);margin-bottom:6px;">
+          Tu as déjà utilisé ton analyse aujourd'hui.
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+          Reviens demain — ou obtiens ton rapport complet maintenant.
+        </div>
+        <a href="https://www.instagram.com/BuildNotBorn.FiFo" target="_blank" 
+          style="display:inline-block;background:var(--yellow);color:var(--black);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.06em;padding:12px 24px;border-radius:8px;text-decoration:none;">
+          DM @BUILDNOTBORN.FIFO →
+        </a>
+      `;
+      errorCard.classList.add('show');
+      return;
+    }
+
     if (!response.ok) throw new Error('API call failed');
 
     const data = await response.json();
