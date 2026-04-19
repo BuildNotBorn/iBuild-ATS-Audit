@@ -521,22 +521,50 @@
 <div class="card" id="job-section">
   <div class="card-label">02 — Métier FIFO ciblé</div>
   <div class="select-wrap">
-    <select id="job-select">
-      <option value="">Sélectionne ton métier…</option>
-      <option value="trades_assistant" data-label="Trades Assistant">Trades Assistant</option>
-      <option value="mechanical_fitter" data-label="Mechanical Fitter">Mechanical Fitter</option>
-      <option value="hd_fitter" data-label="HD Fitter / Heavy Diesel Mechanic">HD Fitter / Heavy Diesel Mechanic</option>
-      <option value="belt_splicer" data-label="Belt Splicer / Conveyor Technician">Belt Splicer / Conveyor Technician</option>
-      <option value="civil_plant" data-label="Civil Plant Operator">Civil Plant Operator</option>
-      <option value="scaffolding" data-label="Scaffolding">Scaffolding</option>
-      <option value="vac_truck" data-label="Vac Truck Operator">Vac Truck Operator</option>
-      <option value="water_cart" data-label="Water Cart Operator">Water Cart Operator</option>
-      <option value="hpwj" data-label="HPWJ Operator">HPWJ Operator</option>
-      <option value="serviceperson" data-label="Serviceperson / Workshop Hand">Serviceperson / Workshop Hand</option>
-      <option value="fifo_chef" data-label="FIFO Chef / Camp Chef">FIFO Chef / Camp Chef</option>
-      <option value="rigger" data-label="Rigger">Rigger</option>
-      <option value="other" data-label="Autre métier FIFO">Autre métier FIFO</option>
-    </select>
+<select id="job-select">
+  <option value="">Sélectionne ton métier…</option>
+  <optgroup label="— Maintenance & Trades">
+    <option value="trades_assistant" data-label="Trades Assistant">Trades Assistant</option>
+    <option value="mechanical_fitter" data-label="Mechanical Fitter">Mechanical Fitter</option>
+    <option value="hd_fitter" data-label="HD Fitter / Heavy Diesel Mechanic">HD Fitter / Heavy Diesel Mechanic</option>
+    <option value="boilermaker" data-label="Boilermaker">Boilermaker</option>
+    <option value="serviceperson" data-label="Serviceperson / Workshop Hand">Serviceperson / Workshop Hand</option>
+    <option value="polywelder" data-label="Polywelder / Dewatering Tech">Polywelder / Dewatering Tech</option>
+  </optgroup>
+  <optgroup label="— Conveyor & Belt">
+    <option value="belt_splicer" data-label="Belt Splicer / Conveyor Technician">Belt Splicer / Conveyor Technician</option>
+  </optgroup>
+  <optgroup label="— Plant & Civil">
+    <option value="civil_plant" data-label="Civil Plant Operator">Civil Plant Operator</option>
+    <option value="water_cart" data-label="Water Cart Operator">Water Cart Operator</option>
+  </optgroup>
+  <optgroup label="— Industrial Services">
+    <option value="vac_truck" data-label="Vac Truck Operator">Vac Truck Operator</option>
+    <option value="hpwj" data-label="HPWJ Operator">HPWJ Operator</option>
+    <option value="hr_driver" data-label="HR Driver Waste Management">HR Driver Waste Management</option>
+    <option value="is_technician" data-label="Industrial Services Technician">Industrial Services Technician</option>
+    <option value="process_tech" data-label="Process Technician (chimie)">Process Technician (chimie)</option>
+  </optgroup>
+  <optgroup label="— Underground">
+    <option value="jumbo_operator" data-label="Jumbo Operator">Jumbo Operator</option>
+    <option value="nipper_ug" data-label="Nipper UG">Nipper UG</option>
+    <option value="ug_service_crew" data-label="UG Service Crew">UG Service Crew</option>
+    <option value="driller_offsider" data-label="Driller Offsider / Drilling Assistant">Driller Offsider / Drilling Assistant</option>
+  </optgroup>
+  <optgroup label="— Rigging & Access">
+    <option value="rigger" data-label="Rigger">Rigger</option>
+    <option value="scaffolding" data-label="Scaffolding">Scaffolding</option>
+    <option value="rope_access" data-label="Rope Access Technician (IRATA)">Rope Access Technician (IRATA)</option>
+    <option value="painter_blaster" data-label="Painter / Blaster">Painter / Blaster</option>
+  </optgroup>
+  <optgroup label="— Marine">
+    <option value="deckhand" data-label="Marine / Dredging Deckhand">Marine / Dredging Deckhand</option>
+  </optgroup>
+  <optgroup label="— Camp & Catering">
+    <option value="fifo_chef" data-label="FIFO Chef / Camp Chef">FIFO Chef / Camp Chef</option>
+    <option value="camp_services" data-label="Camp Services / Kitchen Attendant">Camp Services / Kitchen Attendant</option>
+  </optgroup>
+</select>
     <div class="select-arrow">▼</div>
   </div>
 </div>
