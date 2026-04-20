@@ -753,7 +753,11 @@ async function fileToBase64(file) {
  
 async function extractText(file) {
   return new Promise((resolve) => {
-    if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+    if (file.type.startsWith('image/') || 
+        file.type === 'application/pdf' ||
+        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        file.name.endsWith('.docx') ||
+        file.name.endsWith('.doc')) {
       resolve(null);
       return;
     }
@@ -824,6 +828,9 @@ btnAudit.addEventListener('click', async () => {
       const b64 = await fileToBase64(currentFile);
       payload.cvImage = { data: b64, mediaType: currentFile.type };
     } else if (isPDF) {
+      const b64 = await fileToBase64(currentFile);
+      payload.cvImage = { data: b64, mediaType: 'application/pdf' };
+    } else if (currentFile.name.endsWith('.docx') || currentFile.name.endsWith('.doc')) {
       const b64 = await fileToBase64(currentFile);
       payload.cvImage = { data: b64, mediaType: 'application/pdf' };
     } else {
