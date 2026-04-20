@@ -832,7 +832,7 @@ btnAudit.addEventListener('click', async () => {
       payload.cvImage = { data: b64, mediaType: 'application/pdf' };
     } else if (currentFile.name.endsWith('.docx') || currentFile.name.endsWith('.doc')) {
       const b64 = await fileToBase64(currentFile);
-      payload.cvImage = { data: b64, mediaType: 'application/pdf' };
+      payload.cvDocx = { data: b64 };
     } else {
       const text = await extractText(currentFile);
       payload.cvText = text || 'CV text could not be extracted';
