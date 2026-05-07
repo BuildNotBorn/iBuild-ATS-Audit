@@ -1,6 +1,9 @@
 const mammoth = require('mammoth');
 
 exports.handler = async (event) => {
+  console.log('BODY LENGTH:', event.body ? event.body.length : 'null');
+  console.log('BODY START:', event.body ? event.body.substring(0, 200) : 'null');
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
