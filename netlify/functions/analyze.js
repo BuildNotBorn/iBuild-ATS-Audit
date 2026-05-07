@@ -35,7 +35,7 @@ REGLE ABSOLUE SUR LES TIPS ET SOLUTIONS :
 - Le but : le candidat comprend QUE il a un probleme, pas COMMENT le regler
 - La solution complete est disponible via The Site Access ou en DM Instagram @BuildNotBorn.FiFo
 
-Tu reponds UNIQUEMENT en JSON valide sans markdown sans backticks.`;
+Tu reponds UNIQUEMENT avec un objet JSON sur UNE SEULE LIGNE. Zero saut de ligne dans les strings. Zero markdown. Zero backticks. Zero texte avant ou apres le JSON.`;
 
     const analysisPrompt = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia.
 
@@ -146,30 +146,33 @@ Sois honnete et specifique. Ne flatte pas.`;
     const data = await response.json();
     const rawText = data.content[0].text.trim();
 
-// Sanitise les caractères qui cassent JSON.parse
-const text = rawText
-  .replace(/[\u2018\u2019]/g, "'")   // apostrophes typographiques
-  .replace(/[\u201C\u201D]/g, '"')   // guillemets typographiques
-  .replace(/[\u2013\u2014]/g, '-')   // tirets longs
-  .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ''); // chars de contrôle
+    // Sanitise tous les caracteres qui cassent JSON.parse
+    const text = rawText
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, '-')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, ' ')
+      .replace(/\t/g, ' ');
 
-let result;
-try {
-  result = JSON.parse(text);
-} catch {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) {
+    let result;
     try {
-      result = JSON.parse(match[0]);
-    } catch (e2) {
-      console.error('JSON brut:', text.substring(0, 500));
-      throw new Error('JSON invalide apres sanitisation: ' + e2.message);
+      result = JSON.parse(text);
+    } catch {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          result = JSON.parse(match[0]);
+        } catch (e2) {
+          console.error('JSON brut:', text.substring(0, 500));
+          throw new Error('JSON invalide apres sanitisation: ' + e2.message);
+        }
+      } else {
+        console.error('JSON brut:', text.substring(0, 500));
+        throw new Error('Aucun JSON detecte dans la reponse');
+      }
     }
-  } else {
-    console.error('JSON brut:', text.substring(0, 500));
-    throw new Error('Aucun JSON detecte dans la reponse');
-  }
-}
 
     result.scores.total = Math.min(100,
       (result.scores.format || 0) +
