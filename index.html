@@ -353,7 +353,11 @@ btnAudit.addEventListener('click', async () => {
     else if (isPDF) { const b64 = await fileToBase64(currentFile); payload.cvImage = { data: b64, mediaType: 'application/pdf' }; }
     else if (currentFile.name.endsWith('.docx') || currentFile.name.endsWith('.doc')) { const b64 = await fileToBase64(currentFile); payload.cvDocx = { data: b64 }; }
     else { const text = await extractText(currentFile); payload.cvText = text || 'CV text could not be extracted'; }
-    const response = await fetch('/.netlify/functions/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+    const bodyStr = JSON.stringify(payload);
+    console.log('BODY SIZE KB:', Math.round(bodyStr.length / 1024));
+
+    const response = await fetch('/.netlify/functions/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: bodyStr });
     if (response.status === 429) { showRateLimit(); return; }
     if (!response.ok) throw new Error('API call failed');
     const data = await response.json();
