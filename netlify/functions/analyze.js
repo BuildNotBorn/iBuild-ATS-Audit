@@ -144,16 +144,32 @@ Sois honnete et specifique. Ne flatte pas.`;
     }
 
     const data = await response.json();
-    const text = data.content[0].text.trim();
+    const rawText = data.content[0].text.trim();
 
-    let result;
+// Sanitise les caractères qui cassent JSON.parse
+const text = rawText
+  .replace(/[\u2018\u2019]/g, "'")   // apostrophes typographiques
+  .replace(/[\u201C\u201D]/g, '"')   // guillemets typographiques
+  .replace(/[\u2013\u2014]/g, '-')   // tirets longs
+  .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ''); // chars de contrôle
+
+let result;
+try {
+  result = JSON.parse(text);
+} catch {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) {
     try {
-      result = JSON.parse(text);
-    } catch {
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) result = JSON.parse(match[0]);
-      else throw new Error('JSON invalide: ' + text.substring(0, 200));
+      result = JSON.parse(match[0]);
+    } catch (e2) {
+      console.error('JSON brut:', text.substring(0, 500));
+      throw new Error('JSON invalide apres sanitisation: ' + e2.message);
     }
+  } else {
+    console.error('JSON brut:', text.substring(0, 500));
+    throw new Error('Aucun JSON detecte dans la reponse');
+  }
+}
 
     result.scores.total = Math.min(100,
       (result.scores.format || 0) +
