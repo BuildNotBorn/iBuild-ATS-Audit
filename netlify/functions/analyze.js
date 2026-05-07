@@ -24,6 +24,8 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json'
   };
 
+  let rawText = 'NOT_YET_ASSIGNED';
+
   try {
     const body = JSON.parse(event.body);
     const { cvText, cvImage, cvDocx, jobLabel } = body;
@@ -147,8 +149,8 @@ Sois honnete et specifique. Ne flatte pas.`;
     }
 
     const data = await response.json();
-const rawText = data.content[0].text.trim();
-console.log('RAW HAIKU RESPONSE:', rawText.substring(0, 800));
+    rawText = data.content[0].text.trim();
+    console.log('RAW HAIKU RESPONSE:', rawText.substring(0, 800));
 
     // Sanitise tous les caracteres qui cassent JSON.parse
     const text = rawText
@@ -195,7 +197,10 @@ console.log('RAW HAIKU RESPONSE:', rawText.substring(0, 800));
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({
+        error: err.message,
+        raw_haiku: rawText.substring(0, 3000)
+      })
     };
   }
 };
