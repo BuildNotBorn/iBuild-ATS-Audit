@@ -144,7 +144,8 @@ Sois honnete et specifique. Ne flatte pas.`;
     }
 
     const data = await response.json();
-    const rawText = data.content[0].text.trim();
+const rawText = data.content[0].text.trim();
+console.log('RAW HAIKU RESPONSE:', rawText.substring(0, 800));
 
     // Sanitise tous les caracteres qui cassent JSON.parse
     const text = rawText
