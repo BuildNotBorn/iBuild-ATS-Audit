@@ -1,0 +1,21 @@
+{
+	"dbConnectionString": "postgres://localhost:50882/postgres",
+	"geolocation": {
+		"data": {
+			"city": "Perth",
+			"country": {
+				"code": "AU",
+				"name": "Australia"
+			},
+			"subdivision": {
+				"code": "WA",
+				"name": "Western Australia"
+			},
+			"timezone": "Australia/Perth",
+			"latitude": -31.9872,
+			"longitude": 115.8657,
+			"postalCode": "6151"
+		},
+		"timestamp": 1778152108143
+	}
+}

@@ -341,7 +341,7 @@ function showRateLimit() {
   errorCard.classList.add('show');
 }
 btnAudit.addEventListener('click', async () => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().slice(0, 7);
   const lastAnalysis = localStorage.getItem('ats_last_analysis');
   if (lastAnalysis === today) { showRateLimit(); return; }
   errorCard.classList.remove('show'); formSection.style.display = 'none'; jobSection.style.display = 'none'; btnAudit.style.display = 'none'; loading.classList.add('show'); startLoadingAnimation();

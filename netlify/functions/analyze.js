@@ -1,4 +1,23 @@
 const mammoth = require('mammoth');
+async function checkRateLimit(ip) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const key = `ratelimit:${ip}`;
+  
+  const getRes = await fetch(`${url}/get/${key}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const getData = await getRes.json();
+  const count = parseInt(getData.result) || 0;
+  
+  if (count >= 1) return false;
+  
+  await fetch(`${url}/set/${key}/1/ex/2592000`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  
+  return true;
+}
 
 exports.handler = async (event) => {
   console.log('BODY LENGTH:', event.body ? event.body.length : 'null');
@@ -23,6 +42,16 @@ exports.handler = async (event) => {
     'Access-Control-Allow-Origin': '*',
     'Content-Type': 'application/json'
   };
+
+  const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
+  const allowed = await checkRateLimit(ip);
+  if (!allowed) {
+    return {
+      statusCode: 429,
+      headers,
+      body: JSON.stringify({ error: 'rate_limit' })
+    };
+  }
 
   let rawText = 'NOT_YET_ASSIGNED';
 
@@ -67,8 +96,8 @@ REGLES DE REDACTION DES PROBLEMES :
 - title : nom du probleme en langage simple, 6-10 mots max, pas de jargon seul
 - desc : 2 phrases max. Phrase 1 = ce qui est concretement absent ou casse dans CE CV. Phrase 2 = pourquoi ca bloque dans le processus de recrutement FIFO WA. Pas de solution. Pas d etapes.
 - Exemples de DESC CORRECTS : "Ton CV utilise 2 colonnes — un robot de tri lit ca de haut en bas et rate la moitie de tes infos." / "Tes tickets sont listes sans leurs codes officiels — les logiciels RH filtrent sur les codes exacts, pas les noms."
-- Exemples INTERDITS : "Ajoute le code CPCCWHS1001" / "Convertis en format une colonne" / "Il serait recommande de..."
-
+- Exemples INTERDITS : "Ajoute le code CPCCWHS1001" / "Convertis en format une colonne" / "Il serait recommande de..." / citer un code ticket inventé (WH-00, WHMIS, etc.)
+- REGLE ABSOLUE CODES : tu n'as pas acces a une base de donnees de codes tickets. Ne cite JAMAIS un code (CPCCWHS1001, RIIHAN301E, etc.) que tu n'as pas lu mot pour mot dans le CV soumis. Si les codes sont absents, ecris uniquement "codes officiels absents du CV" — zero invention, zero exemple.
 REGLES POUR improvement_areas :
 - 3 zones max
 - Format : "Ce que ca concerne (sans solution) — details dans The Site Access"
