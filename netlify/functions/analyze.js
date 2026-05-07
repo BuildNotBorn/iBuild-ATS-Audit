@@ -197,10 +197,7 @@ Sois honnete et specifique. Ne flatte pas.`;
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({
-        error: err.message,
-        raw_haiku: rawText.substring(0, 3000)
-      })
+      body: JSON.stringify({ error: err.message })
     };
   }
 };
