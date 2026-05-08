@@ -59,71 +59,75 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const { cvText, cvImage, cvDocx, jobLabel } = body;
 
-    const systemPrompt = `Tu es un expert ATS specialise dans le marche FIFO mining Western Australia. Tu analyses des CV de candidats WHV francophones qui veulent entrer dans le mining australien. Ton analyse est basee sur 4700+ annonces Seek WA reelles.
+    const systemPrompt = `Tu es un expert ATS spécialisé dans le marché FIFO mining Western Australia. Tu analyses des CV de candidats WHV francophones qui veulent entrer dans le mining australien. Ton analyse est basée sur 4700+ annonces Seek WA réelles.
 
-REGLES DE LANGAGE ABSOLUES :
-- Ecris comme si tu parlais a quelqu un qui ne connait pas les RH ni les ATS
-- Zero jargon technique sans explication : si tu ecris "ATS" dis aussi "logiciel de tri automatique"
+RÈGLES DE LANGAGE ABSOLUES :
+- Écris comme si tu parlais à quelqu'un qui ne connaît pas les RH ni les ATS
+- Zéro jargon technique sans explication : si tu écris "ATS" dis aussi "logiciel de tri automatique"
 - Phrases courtes. Maximum 2 phrases par description.
-- Ton direct, sans condescendance. Pas de "malheureusement", pas de "il serait preferable"
-- La premiere phrase dit LE PROBLEME CONCRET. La deuxieme dit POURQUOI CA BLOQUE.
+- Ton direct, sans condescendance. Pas de "malheureusement", pas de "il serait préférable"
+- La première phrase dit LE PROBLÈME CONCRET. La deuxième dit POURQUOI ÇA BLOQUE.
 
-REGLE ABSOLUE SUR LES SOLUTIONS :
-- Tu identifies les problemes avec precision et honnetete
+RÈGLE ABSOLUE SUR LES SOLUTIONS :
+- Tu identifies les problèmes avec précision et honnêteté
 - Tu nommes exactement ce qui cloche
-- Tu ne donnes JAMAIS la solution exacte ni les etapes pour corriger
-- La solution complete est dans The Site Access ou en DM @BuildNotBorn.FiFo
+- Tu ne donnes JAMAIS la solution exacte ni les étapes pour corriger
+- La solution complète est dans The Site Access ou en DM @BuildNotBorn.FiFo
 
-SEVERITE — utilise exactement ces valeurs :
-- "critical" + tag "BLOQUANT" : le CV est rejete automatiquement a cause de ca
-- "warning" + tag "A CORRIGER" : reduit fortement les chances, pas eliminatoire
+SÉVÉRITÉ — utilise exactement ces valeurs :
+- "critical" + tag "BLOQUANT" : le CV est rejeté automatiquement à cause de ça
+- "warning" + tag "À CORRIGER" : réduit fortement les chances, pas éliminatoire
 - "minor" + tag "OPTIMISATION" : impact moindre mais corrigeable facilement
 
-Tu reponds UNIQUEMENT avec un objet JSON sur UNE SEULE LIGNE. Zero saut de ligne dans les strings. Zero markdown. Zero backticks. Zero texte avant ou apres le JSON.`;
+ORTHOGRAPHE OBLIGATOIRE : utilise le français complet avec tous les accents (é, è, ê, à, ù, û, ô, î, ç) dans TOUTES les valeurs du JSON — title, desc, verdict, improvement_areas.
+
+Tu réponds UNIQUEMENT avec un objet JSON sur UNE SEULE LIGNE. Zéro saut de ligne dans les strings. Zéro markdown. Zéro backticks. Zéro texte avant ou après le JSON.`;
 
     const analysisPrompt = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia.
 
-Evalue sur 3 criteres :
-1. FORMAT PARSEABILITY sur 40pts : colonnes multiples, tableaux, elements graphiques, icones, couleurs, mise en page complexe, template Canva
+Évalue sur 3 critères :
+1. FORMAT PARSEABILITY sur 40pts : colonnes multiples, tableaux, éléments graphiques, icônes, couleurs, mise en page complexe, template Canva
 2. KEYWORD DENSITY sur 40pts : keywords critiques pour ${jobLabel} mining WA, vocabulaire terrain australien, codes tickets officiels, ANZSCO
-3. SECTION COMPLETENESS sur 20pts : sections obligatoires, tickets avec codes, experience pertinente, references australiennes
+3. SECTION COMPLETENESS sur 20pts : sections obligatoires, tickets avec codes, expérience pertinente, références australiennes
 
-CV Canva 2 colonnes = format automatiquement inferieur a 15 sur 40 en format.
+CV Canva 2 colonnes = format automatiquement inférieur à 15 sur 40 en format.
+Un CV Word ou PDF une colonne sobre sans graphiques peut scorer 30-38 sur 40 en format.
+Ne pénalise PAS ce qui n'est pas visible dans le CV — note uniquement ce qui est réellement problématique.
 
-Identifie 4 a 6 problemes reels et specifiques a CE CV.
+Identifie 4 à 6 problèmes réels et spécifiques à CE CV.
 
-REGLES DE REDACTION DES PROBLEMES :
-- title : nom du probleme en langage simple, 6-10 mots max, pas de jargon seul
-- desc : 2 phrases max. Phrase 1 = ce qui est concretement absent ou casse dans CE CV. Phrase 2 = pourquoi ca bloque dans le processus de recrutement FIFO WA. Pas de solution. Pas d etapes.
-- Exemples de DESC CORRECTS : "Ton CV utilise 2 colonnes — un robot de tri lit ca de haut en bas et rate la moitie de tes infos." / "Tes tickets sont listes sans leurs codes officiels — les logiciels RH filtrent sur les codes exacts, pas les noms."
-- Exemples INTERDITS : "Ajoute le code CPCCWHS1001" / "Convertis en format une colonne" / "Il serait recommande de..." / citer un code ticket inventé (WH-00, WHMIS, etc.)
-- REGLE ABSOLUE CODES : tu n'as pas acces a une base de donnees de codes tickets. Ne cite JAMAIS un code (CPCCWHS1001, RIIHAN301E, etc.) que tu n'as pas lu mot pour mot dans le CV soumis. Si les codes sont absents, ecris uniquement "codes officiels absents du CV" — zero invention, zero exemple.
-REGLES POUR improvement_areas :
+RÈGLES DE RÉDACTION DES PROBLÈMES :
+- title : nom du problème en langage simple, 6-10 mots max, pas de jargon seul
+- desc : 2 phrases max. Phrase 1 = ce qui est concrètement absent ou cassé dans CE CV. Phrase 2 = pourquoi ça bloque dans le processus de recrutement FIFO WA. Pas de solution. Pas d'étapes.
+- Exemples de DESC CORRECTS : "Ton CV utilise 2 colonnes — un robot de tri lit ça de haut en bas et rate la moitié de tes infos." / "Tes tickets sont listés sans leurs codes officiels — les logiciels RH filtrent sur les codes exacts, pas les noms."
+- Exemples INTERDITS : "Ajoute le code CPCCWHS1001" / "Convertis en format une colonne" / "Il serait recommandé de..." / citer un code ticket inventé (WH-00, WHMIS, etc.)
+- RÈGLE ABSOLUE CODES : tu n'as pas accès à une base de données de codes tickets. Ne cite JAMAIS un code (CPCCWHS1001, RIIHAN301E, etc.) que tu n'as pas lu mot pour mot dans le CV soumis. Si les codes sont absents, écris uniquement "codes officiels absents du CV" — zéro invention, zéro exemple.
+RÈGLES POUR improvement_areas :
 - 3 zones max
-- Format : "Ce que ca concerne (sans solution) — details dans The Site Access"
-- Exemple correct : "Restructuration complete du format pour etre lu par les ATS — details dans The Site Access"
-- Exemple interdit : "Convertir en une colonne en supprimant les zones laterales"
+- Format : "Ce que ça concerne (sans solution) — détails dans The Site Access"
+- Exemple correct : "Restructuration complète du format pour être lu par les ATS — détails dans The Site Access"
+- Exemple interdit : "Convertir en une colonne en supprimant les zones latérales"
 
-Reponds avec exactement ce JSON :
+Réponds avec exactement ce JSON :
 {
   "scores": {"format": 12, "keywords": 8, "completeness": 10, "total": 30},
   "issues": [
     {
-      "title": "Titre simple et direct",
-      "desc": "Phrase 1 concrete sur CE CV. Phrase 2 sur pourquoi ca bloque.",
+      "title": "Titre simple et direct avec accents",
+      "desc": "Phrase 1 concrète sur CE CV. Phrase 2 sur pourquoi ça bloque.",
       "severity": "critical",
       "tag": "BLOQUANT"
     }
   ],
-  "verdict": "Phrase choc 6-10 mots sans jargon",
+  "verdict": "Phrase choc 6-10 mots avec accents français",
   "improvement_areas": [
-    "Zone identifiee sans solution — details dans The Site Access",
-    "Zone identifiee sans solution — details dans The Site Access",
-    "Zone identifiee sans solution — details dans The Site Access"
+    "Zone identifiée sans solution — détails dans The Site Access",
+    "Zone identifiée sans solution — détails dans The Site Access",
+    "Zone identifiée sans solution — détails dans The Site Access"
   ]
 }
 
-Sois honnete et specifique. Ne flatte pas. Parle comme a un ami, pas comme a un RH.`;
+Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à un RH.`;
 
     let content;
 
@@ -134,7 +138,16 @@ Sois honnete et specifique. Ne flatte pas. Parle comme a un ami, pas comme a un 
         const extractedText = result.value;
         content = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia. CONTENU EXTRAIT DU DOCX : ${extractedText}. ${analysisPrompt}`;
       } catch (e) {
-        content = `Analyse ce CV pour un poste de ${jobLabel} FIFO WA. Le fichier DOCX na pas pu etre extrait. Reponds : {"scores":{"format":10,"keywords":8,"completeness":10,"total":28},"issues":[{"title":"Fichier DOCX impossible a lire","desc":"Le document soumis ne peut pas etre ouvert. Les logiciels de tri automatique ont le meme probleme avec les fichiers corrompus.","severity":"critical","tag":"BLOQUANT"}],"verdict":"CV illisible - audit manuel requis","improvement_areas":["Format du fichier a verifier avant soumission — details dans The Site Access","Soumettre en PDF ou JPG pour eviter ce probleme — details dans The Site Access","DM @BuildNotBorn.FiFo pour audit manuel"]}`;
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+            issues: [{ title: "Fichier DOCX impossible à lire", desc: "Le document soumis ne peut pas être ouvert par le système. Les logiciels ATS ont le même problème avec les fichiers corrompus ou mal exportés.", severity: "critical", tag: "BLOQUANT" }],
+            verdict: "CV illisible — audit manuel requis",
+            improvement_areas: ["Format du fichier à vérifier avant soumission — détails dans The Site Access", "Soumettre en PDF ou JPG pour éviter ce problème — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour audit manuel"]
+          })
+        };
       }
 
     } else if (cvImage && cvImage.data) {
@@ -143,6 +156,20 @@ Sois honnete et specifique. Ne flatte pas. Parle comme a un ami, pas comme a un 
       const validImage = ['image/jpeg','image/png','image/gif','image/webp'].includes(mediaType);
 
       if (isPDF) {
+        // Vérifie la signature PDF (%PDF- en base64 = JVBER)
+        const isPDFValid = cvImage.data.trimStart().startsWith('JVBER');
+        if (!isPDFValid) {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+              issues: [{ title: "Fichier PDF corrompu ou invalide", desc: "Le fichier envoyé n'est pas un PDF lisible. Les logiciels ATS rejettent automatiquement les fichiers qu'ils ne peuvent pas ouvrir.", severity: "critical", tag: "BLOQUANT" }],
+              verdict: "Fichier illisible — réessaie en PDF valide",
+              improvement_areas: ["Vérification du fichier avant envoi — détails dans The Site Access", "Essaie d'exporter à nouveau depuis ton logiciel de traitement de texte — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour audit manuel"]
+            })
+          };
+        }
         content = [
           {
             type: 'document',
@@ -159,14 +186,32 @@ Sois honnete et specifique. Ne flatte pas. Parle comme a un ami, pas comme a un 
           { type: 'text', text: analysisPrompt }
         ];
       } else {
-        content = `Genere une analyse ATS type pour un poste de ${jobLabel} FIFO WA. Reponds : {"scores":{"format":10,"keywords":8,"completeness":10,"total":28},"issues":[{"title":"Format de fichier non reconnu","desc":"Le fichier envoye ne peut pas etre lu. Les logiciels de tri automatique rejettent aussi les formats non standard.","severity":"critical","tag":"BLOQUANT"}],"verdict":"Format invalide - reessayer en JPG ou PDF","improvement_areas":["Format du fichier a corriger avant soumission — details dans The Site Access","Soumettre en JPG, PNG ou PDF uniquement — details dans The Site Access","DM @BuildNotBorn.FiFo pour aide"]}`;
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+            issues: [{ title: "Format de fichier non reconnu", desc: "Le fichier envoyé ne peut pas être lu par le système. Les logiciels ATS rejettent aussi les formats non standard.", severity: "critical", tag: "BLOQUANT" }],
+            verdict: "Format invalide — réessaie en JPG ou PDF",
+            improvement_areas: ["Format du fichier à corriger avant soumission — détails dans The Site Access", "Soumettre en JPG, PNG ou PDF uniquement — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour aide"]
+          })
+        };
       }
 
     } else if (cvText) {
       content = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia. CONTENU : ${cvText}. ${analysisPrompt}`;
 
     } else {
-      content = `Genere une analyse ATS type pour un poste de ${jobLabel} FIFO WA sans CV fourni. Reponds : {"scores":{"format":8,"keywords":6,"completeness":8,"total":22},"issues":[{"title":"Aucun CV detecte dans l envoi","desc":"Le fichier na pas pu etre lu par le systeme. Reessayer en JPG, PNG ou PDF de moins de 5MB.","severity":"critical","tag":"BLOQUANT"}],"verdict":"CV non detecte - reessayer","improvement_areas":["Format du fichier a verifier — details dans The Site Access","Taille du fichier a reduire si necessaire — details dans The Site Access","DM @BuildNotBorn.FiFo pour aide"]}`;
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+          issues: [{ title: "Aucun CV détecté dans l'envoi", desc: "Le fichier n'a pas pu être lu par le système. Réessaie en JPG, PNG ou PDF de moins de 5 MB.", severity: "critical", tag: "BLOQUANT" }],
+          verdict: "CV non détecté — réessaie",
+          improvement_areas: ["Format du fichier à vérifier — détails dans The Site Access", "Taille du fichier à réduire si nécessaire — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour aide"]
+        })
+      };
     }
 
     const requestHeaders = {
@@ -189,6 +234,20 @@ Sois honnete et specifique. Ne flatte pas. Parle comme a un ami, pas comme a un 
     if (!response.ok) {
       const errText = await response.text();
       console.error('Anthropic API error:', response.status, errText);
+      // PDF corrompu : Anthropic retourne 400 quand il ne peut pas parser le document
+      const isPDFContent = Array.isArray(content) && content[0]?.type === 'document';
+      if (isPDFContent && (response.status === 400 || response.status === 422)) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+            issues: [{ title: "PDF impossible à lire par l'analyseur", desc: "Le contenu de ton PDF ne peut pas être extrait. C'est souvent dû à un PDF scanné sans OCR, protégé par mot de passe, ou mal généré.", severity: "critical", tag: "BLOQUANT" }],
+            verdict: "PDF illisible — essaie en JPG ou DOCX",
+            improvement_areas: ["Format du fichier à corriger avant soumission — détails dans The Site Access", "Exporte ton CV en JPG (capture d'écran) ou DOCX si le PDF ne fonctionne pas — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour audit manuel"]
+          })
+        };
+      }
       throw new Error('API error ' + response.status + ': ' + errText);
     }
 
