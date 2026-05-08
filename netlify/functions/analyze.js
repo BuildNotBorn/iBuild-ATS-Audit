@@ -57,7 +57,7 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { cvText, cvImage, cvDocx, jobLabel } = body;
+    const { cvImage, cvPdf, cvDocx, jobLabel } = body;
 
     const systemPrompt = `Tu es un expert ATS spécialisé dans le marché FIFO mining Western Australia. Tu analyses des CV de candidats WHV francophones qui veulent entrer dans le mining australien. Ton analyse est basée sur 4700+ annonces Seek WA réelles.
 
@@ -131,9 +131,9 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
 
     let content;
 
-    if (cvDocx && cvDocx.data) {
+    if (cvDocx) {
       try {
-        const buffer = Buffer.from(cvDocx.data, 'base64');
+        const buffer = Buffer.from(cvDocx, 'base64');
         const result = await mammoth.extractRawText({ buffer });
         const extractedText = result.value;
         content = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia. CONTENU EXTRAIT DU DOCX : ${extractedText}. ${analysisPrompt}`;
@@ -142,74 +142,53 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
           statusCode: 200,
           headers,
           body: JSON.stringify({
-            scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+            global_score: 0,
+            scores: { format: 0, keywords: 0, completeness: 0 },
             issues: [{ title: "Fichier DOCX impossible à lire", desc: "Le document soumis ne peut pas être ouvert par le système. Les logiciels ATS ont le même problème avec les fichiers corrompus ou mal exportés.", severity: "critical", tag: "BLOQUANT" }],
-            verdict: "CV illisible — audit manuel requis",
-            improvement_areas: ["Format du fichier à vérifier avant soumission — détails dans The Site Access", "Soumettre en PDF ou JPG pour éviter ce problème — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour audit manuel"]
+            verdict: "CV illisible — audit manuel requis"
           })
         };
       }
 
-    } else if (cvImage && cvImage.data) {
-      const mediaType = cvImage.mediaType || 'image/jpeg';
-      const isPDF = mediaType === 'application/pdf';
-      const validImage = ['image/jpeg','image/png','image/gif','image/webp'].includes(mediaType);
-
-      if (isPDF) {
-        // Vérifie la signature PDF (%PDF- en base64 = JVBER)
-        const isPDFValid = cvImage.data.trimStart().startsWith('JVBER');
-        if (!isPDFValid) {
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-              scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
-              issues: [{ title: "Fichier PDF corrompu ou invalide", desc: "Le fichier envoyé n'est pas un PDF lisible. Les logiciels ATS rejettent automatiquement les fichiers qu'ils ne peuvent pas ouvrir.", severity: "critical", tag: "BLOQUANT" }],
-              verdict: "Fichier illisible — réessaie en PDF valide",
-              improvement_areas: ["Vérification du fichier avant envoi — détails dans The Site Access", "Essaie d'exporter à nouveau depuis ton logiciel de traitement de texte — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour audit manuel"]
-            })
-          };
-        }
-        content = [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: cvImage.data }
-          },
-          { type: 'text', text: analysisPrompt }
-        ];
-      } else if (validImage) {
-        content = [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: cvImage.data }
-          },
-          { type: 'text', text: analysisPrompt }
-        ];
-      } else {
+    } else if (cvPdf) {
+      // Vérifie la signature PDF (%PDF- en base64 = JVBER)
+      if (!cvPdf.trimStart().startsWith('JVBER')) {
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({
-            scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
-            issues: [{ title: "Format de fichier non reconnu", desc: "Le fichier envoyé ne peut pas être lu par le système. Les logiciels ATS rejettent aussi les formats non standard.", severity: "critical", tag: "BLOQUANT" }],
-            verdict: "Format invalide — réessaie en JPG ou PDF",
-            improvement_areas: ["Format du fichier à corriger avant soumission — détails dans The Site Access", "Soumettre en JPG, PNG ou PDF uniquement — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour aide"]
+            global_score: 0,
+            scores: { format: 0, keywords: 0, completeness: 0 },
+            issues: [{ title: "Fichier PDF corrompu ou invalide", desc: "Le fichier envoyé n'est pas un PDF lisible. Les logiciels ATS rejettent automatiquement les fichiers qu'ils ne peuvent pas ouvrir.", severity: "critical", tag: "BLOQUANT" }],
+            verdict: "Fichier illisible — réessaie en PDF valide"
           })
         };
       }
+      content = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: cvPdf } },
+        { type: 'text', text: analysisPrompt }
+      ];
 
-    } else if (cvText) {
-      content = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia. CONTENU : ${cvText}. ${analysisPrompt}`;
+    } else if (cvImage) {
+      // Détecte le type image depuis la signature base64
+      let mediaType = 'image/jpeg';
+      if (cvImage.startsWith('iVBOR')) mediaType = 'image/png';
+      else if (cvImage.startsWith('R0lGO')) mediaType = 'image/gif';
+      else if (cvImage.startsWith('UklGR')) mediaType = 'image/webp';
+      content = [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: cvImage } },
+        { type: 'text', text: analysisPrompt }
+      ];
 
     } else {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+          global_score: 0,
+          scores: { format: 0, keywords: 0, completeness: 0 },
           issues: [{ title: "Aucun CV détecté dans l'envoi", desc: "Le fichier n'a pas pu être lu par le système. Réessaie en JPG, PNG ou PDF de moins de 5 MB.", severity: "critical", tag: "BLOQUANT" }],
-          verdict: "CV non détecté — réessaie",
-          improvement_areas: ["Format du fichier à vérifier — détails dans The Site Access", "Taille du fichier à réduire si nécessaire — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour aide"]
+          verdict: "CV non détecté — réessaie"
         })
       };
     }
@@ -241,10 +220,10 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
           statusCode: 200,
           headers,
           body: JSON.stringify({
-            scores: { format: 0, keywords: 0, completeness: 0, total: 0 },
+            global_score: 0,
+            scores: { format: 0, keywords: 0, completeness: 0 },
             issues: [{ title: "PDF impossible à lire par l'analyseur", desc: "Le contenu de ton PDF ne peut pas être extrait. C'est souvent dû à un PDF scanné sans OCR, protégé par mot de passe, ou mal généré.", severity: "critical", tag: "BLOQUANT" }],
-            verdict: "PDF illisible — essaie en JPG ou DOCX",
-            improvement_areas: ["Format du fichier à corriger avant soumission — détails dans The Site Access", "Exporte ton CV en JPG (capture d'écran) ou DOCX si le PDF ne fonctionne pas — détails dans The Site Access", "DM @BuildNotBorn.FiFo pour audit manuel"]
+            verdict: "PDF illisible — essaie en JPG ou DOCX"
           })
         };
       }
@@ -288,6 +267,7 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
       (result.scores.keywords || 0) +
       (result.scores.completeness || 0)
     );
+    result.global_score = result.scores.total;
 
     return {
       statusCode: 200,

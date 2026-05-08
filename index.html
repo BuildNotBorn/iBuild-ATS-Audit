@@ -4,390 +4,1236 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ATS Audit FIFO — BuildNotBorn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --black: #0a0a0a; --white: #f5f3ee; --yellow: #FFD050; --red: #E63329;
-    --orange: #F47B20; --green: #2CB67D; --gray: #1a1a1a; --gray2: #2a2a2a;
-    --gray3: #3a3a3a; --muted: #888;
-    --font-display: 'Bebas Neue', sans-serif; --font-body: 'DM Sans', sans-serif;
+    --gold: #F5A800;
+    --gold-dark: #C47F00;
+    --gold-glow: rgba(245, 168, 0, 0.15);
+    --black: #0A0A0A;
+    --black-2: #111111;
+    --black-3: #1A1A1A;
+    --white: #F0EDE8;
+    --grey: #888880;
+    --danger: #FF3B30;
+    --warning: #FF9500;
+    --ok: #34C759;
   }
-  body { background: var(--black); color: var(--white); font-family: var(--font-body); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 16px 60px; }
-  .header { width: 100%; max-width: 640px; padding: 32px 0 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
-  .badge { display: inline-flex; align-items: center; gap: 6px; background: var(--yellow); color: var(--black); font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; }
-  .header h1 { font-family: var(--font-display); font-size: clamp(42px, 10vw, 72px); letter-spacing: 0.02em; line-height: 0.95; color: var(--white); }
-  .header h1 span { color: var(--yellow); }
-  .header p { font-size: 15px; color: var(--muted); font-weight: 300; max-width: 420px; line-height: 1.6; }
-  .card { width: 100%; max-width: 640px; background: var(--gray); border: 1px solid var(--gray3); border-radius: 16px; padding: 28px; margin-bottom: 16px; }
-  .card-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-  .upload-zone { border: 1.5px dashed var(--gray3); border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative; }
-  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--yellow); background: rgba(255, 208, 80, 0.04); }
-  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-  .upload-icon { width: 40px; height: 40px; margin: 0 auto 12px; border: 1.5px solid var(--gray3); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  .upload-zone p { font-size: 14px; color: var(--muted); line-height: 1.5; }
-  .upload-zone strong { color: var(--white); font-weight: 500; }
-  .upload-zone .file-types { font-size: 11px; color: var(--gray3); margin-top: 6px; letter-spacing: 0.05em; }
-  .file-preview { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: var(--gray2); border-radius: 10px; margin-top: 12px; }
-  .file-preview.show { display: flex; }
-  .file-preview-icon { width: 36px; height: 36px; background: var(--yellow); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-  .file-preview-name { font-size: 13px; font-weight: 500; color: var(--white); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .file-preview-remove { font-size: 18px; cursor: pointer; background: none; border: none; color: var(--muted); padding: 0 4px; line-height: 1; }
-  .select-wrap { position: relative; }
-  select { width: 100%; background: var(--gray2); border: 1px solid var(--gray3); border-radius: 10px; color: var(--white); font-family: var(--font-body); font-size: 15px; padding: 14px 44px 14px 16px; appearance: none; cursor: pointer; outline: none; transition: border-color 0.2s; }
-  select:focus { border-color: var(--yellow); }
-  select option { background: #1a1a1a; }
-  .select-arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); font-size: 12px; }
-  .btn-audit { width: 100%; max-width: 640px; padding: 18px; background: var(--yellow); color: var(--black); font-family: var(--font-display); font-size: 22px; letter-spacing: 0.08em; border: none; border-radius: 12px; cursor: pointer; transition: transform 0.15s, opacity 0.15s; margin-bottom: 16px; }
-  .btn-audit:hover { opacity: 0.92; transform: translateY(-1px); }
-  .btn-audit:active { transform: scale(0.99); }
-  .btn-audit:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-  .loading { display: none; width: 100%; max-width: 640px; flex-direction: column; align-items: center; gap: 16px; padding: 40px 28px; background: var(--gray); border: 1px solid var(--gray3); border-radius: 16px; margin-bottom: 16px; text-align: center; }
-  .loading.show { display: flex; }
-  .spinner { width: 40px; height: 40px; border: 3px solid var(--gray3); border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-steps { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 300px; }
-  .loading-step { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; opacity: 0; transition: opacity 0.4s; }
-  .loading-step.active { color: var(--white); opacity: 1; }
-  .loading-step.done { color: var(--green); opacity: 1; }
-  .step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gray3); flex-shrink: 0; }
-  .loading-step.active .step-dot { background: var(--yellow); }
-  .loading-step.done .step-dot { background: var(--green); }
-  .results { display: none; width: 100%; max-width: 640px; flex-direction: column; gap: 16px; }
-  .results.show { display: flex; }
-  .score-card { background: var(--gray); border: 1px solid var(--gray3); border-radius: 16px; padding: 32px 28px; display: flex; align-items: center; gap: 28px; }
-  .score-ring { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
-  .score-ring svg { transform: rotate(-90deg); width: 100px; height: 100px; }
-  .score-ring-bg { fill: none; stroke: var(--gray3); stroke-width: 7; }
-  .score-ring-fill { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
-  .score-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .score-number { font-family: var(--font-display); font-size: 32px; line-height: 1; color: var(--white); }
-  .score-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
-  .score-info { flex: 1; }
-  .score-verdict { font-family: var(--font-display); font-size: 20px; letter-spacing: 0.03em; margin-bottom: 8px; line-height: 1.2; }
-  .score-subtitle { font-size: 13px; color: var(--muted); line-height: 1.6; }
-  .score-bars { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray3); }
-  .bar-row { display: flex; align-items: center; gap: 12px; }
-  .bar-label { font-size: 12px; color: var(--muted); width: 100px; flex-shrink: 0; }
-  .bar-track { flex: 1; height: 4px; background: var(--gray3); border-radius: 2px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 2px; width: 0%; transition: width 1.4s cubic-bezier(0.4, 0, 0.2, 1); }
-  .bar-score { font-size: 12px; font-weight: 500; width: 36px; text-align: right; flex-shrink: 0; }
-  .areas-card { background: var(--gray); border: 1px solid var(--gray3); border-radius: 16px; padding: 24px 28px; }
-  .areas-title { font-family: var(--font-display); font-size: 18px; letter-spacing: 0.04em; margin-bottom: 4px; color: var(--yellow); }
-  .areas-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
-  .area-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray3); font-size: 14px; color: var(--muted); line-height: 1.5; }
-  .area-item:last-child { border-bottom: none; }
-  .area-num { color: var(--yellow); font-weight: 600; flex-shrink: 0; width: 20px; }
-  .issues-card { background: var(--gray); border: 1px solid var(--gray3); border-radius: 16px; padding: 24px 28px; }
-  .issues-title { font-family: var(--font-display); font-size: 18px; letter-spacing: 0.04em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-  .count-badge { background: var(--red); color: var(--white); font-family: var(--font-body); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em; }
-  .issue-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--gray3); }
-  .issue-item:last-child { border-bottom: none; }
-  .issue-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
-  .issue-body { flex: 1; }
-  .issue-title { font-size: 14px; font-weight: 500; color: var(--white); margin-bottom: 4px; }
-  .issue-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
-  .issue-tag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; margin-top: 6px; }
-  .cta-card { background: var(--yellow); border-radius: 16px; padding: 32px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  .cta-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(0,0,0,0.45); }
-  .cta-title { font-family: var(--font-display); font-size: 32px; letter-spacing: 0.03em; color: var(--black); line-height: 1.05; }
-  .cta-sub { font-size: 14px; color: rgba(0,0,0,0.65); max-width: 380px; line-height: 1.65; }
-  .cta-score-pill { background: var(--black); color: var(--yellow); font-family: var(--font-display); font-size: 16px; letter-spacing: 0.08em; padding: 8px 20px; border-radius: 8px; }
-  .cta-divider { width: 40px; height: 2px; background: rgba(0,0,0,0.15); border-radius: 2px; }
-  .cta-steps { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px; text-align: left; }
-  .cta-step { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: rgba(0,0,0,0.7); line-height: 1.4; }
-  .cta-step-num { background: var(--black); color: var(--yellow); font-family: var(--font-display); font-size: 13px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-  .cta-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--black); color: var(--white); font-family: var(--font-display); font-size: 20px; letter-spacing: 0.06em; padding: 16px 32px; border-radius: 10px; border: none; cursor: pointer; text-decoration: none; transition: opacity 0.15s; margin-top: 4px; width: 100%; max-width: 340px; justify-content: center; }
-  .cta-btn:hover { opacity: 0.85; }
-  .ig-handle { font-size: 12px; color: rgba(0,0,0,0.45); margin-top: -6px; }
-  .error-card { background: rgba(230,51,41,0.1); border: 1px solid rgba(230,51,41,0.3); border-radius: 12px; padding: 20px 24px; font-size: 14px; color: #F47B70; text-align: center; display: none; width: 100%; max-width: 640px; margin-bottom: 16px; }
-  .error-card.show { display: block; }
-  .footer { margin-top: 40px; font-size: 11px; color: var(--gray3); text-align: center; letter-spacing: 0.05em; }
-  .sev-critical { background: var(--red); } .sev-high { background: var(--orange); } .sev-med { background: var(--yellow); }
-  .tag-critical { background: rgba(230,51,41,0.15); color: #F47B70; }
-  .tag-high { background: rgba(244,123,32,0.15); color: #F4A060; }
-  .tag-med { background: rgba(255,208,80,0.15); color: #E8B840; }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* ── GRAIN OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* ── SCANLINES ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(245, 168, 0, 0.12);
+    background: rgba(10, 10, 10, 0.92);
+    backdrop-filter: blur(12px);
+  }
+
+  .header-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.08em;
+    color: var(--white);
+  }
+
+  .header-brand span {
+    color: var(--gold);
+  }
+
+  .header-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--black);
+    background: var(--gold);
+    padding: 5px 12px;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 24px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Big background text */
+  .hero-bg-text {
+    position: absolute;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(120px, 25vw, 280px);
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(245, 168, 0, 0.06);
+    letter-spacing: -0.02em;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Diagonal gold stripe */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    right: -5%;
+    width: 3px;
+    height: 130%;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+    transform: rotate(15deg);
+    opacity: 0.3;
+  }
+
+  .hero-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .eyebrow-line {
+    width: 32px;
+    height: 2px;
+    background: var(--gold);
+  }
+
+  .eyebrow-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(72px, 15vw, 160px);
+    line-height: 0.9;
+    text-align: center;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .hero-title .line-1 { color: var(--white); display: block; }
+  .hero-title .line-2 {
+    color: var(--gold);
+    display: block;
+    -webkit-text-stroke: 0px;
+    text-shadow:
+      0 0 60px rgba(245, 168, 0, 0.4),
+      0 0 120px rgba(245, 168, 0, 0.1);
+  }
+  .hero-title .line-3 { color: var(--white); display: block; }
+
+  .hero-sub {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(14px, 2vw, 18px);
+    font-weight: 400;
+    color: var(--grey);
+    text-align: center;
+    letter-spacing: 0.05em;
+    margin-bottom: 48px;
+    max-width: 520px;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .hero-sub strong {
+    color: var(--white);
+    font-weight: 600;
+  }
+
+  .hero-cta-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .btn-primary {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.08em;
+    color: var(--black);
+    background: var(--gold);
+    border: none;
+    padding: 14px 40px;
+    cursor: pointer;
+    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.15);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .btn-primary:hover::after { transform: translateX(0); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(245,168,0,0.3); }
+
+  .hero-scroll-hint {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 32px;
+    background: linear-gradient(to bottom, var(--grey), transparent);
+    animation: scrollPulse 1.5s infinite;
+  }
+
+  /* ── STATS STRIP ── */
+  .stats-strip {
+    background: var(--black-2);
+    border-top: 1px solid rgba(245,168,0,0.15);
+    border-bottom: 1px solid rgba(245,168,0,0.15);
+    padding: 20px 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .stats-inner {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 40px;
+    border-right: 1px solid rgba(245,168,0,0.12);
+  }
+
+  .stat-item:last-child { border-right: none; }
+
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--grey);
+    max-width: 80px;
+    line-height: 1.3;
+  }
+
+  /* ── MAIN TOOL SECTION ── */
+  .tool-section {
+    padding: 80px 24px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 6vw, 56px);
+    line-height: 1;
+    color: var(--white);
+    margin-bottom: 48px;
+  }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    background: var(--black-2);
+    border: 2px dashed rgba(245,168,0,0.25);
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gold-glow);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .upload-zone:hover {
+    border-color: rgba(245,168,0,0.6);
+  }
+
+  .upload-zone:hover::before { opacity: 1; }
+
+  .upload-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .upload-main {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.05em;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .upload-sub {
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    color: var(--grey);
+    margin-bottom: 16px;
+  }
+
+  .upload-formats {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .format-tag {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(245,168,0,0.3);
+    padding: 3px 8px;
+  }
+
+  .upload-zone.has-file {
+    border-color: var(--gold);
+    border-style: solid;
+  }
+
+  .upload-zone.has-file::before { opacity: 1; }
+
+  .file-info {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .file-info.visible { display: flex; }
+  .upload-default.hidden { display: none; }
+
+  .file-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+  }
+
+  .file-size {
+    font-family: 'Barlow', sans-serif;
+    font-size: 12px;
+    color: var(--grey);
+  }
+
+  /* ── JOB SELECTOR ── */
+  .step-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    color: var(--black);
+    background: var(--gold);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+
+  .step-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey);
+  }
+
+  .job-select {
+    width: 100%;
+    background: var(--black-2);
+    border: 1px solid rgba(245,168,0,0.2);
+    color: var(--white);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 16px 20px;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%23F5A800' stroke-width='2'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 20px center;
+    margin-bottom: 32px;
+  }
+
+  .job-select:focus { border-color: var(--gold); }
+
+  /* ── ANALYZE BUTTON ── */
+  .btn-analyze {
+    width: 100%;
+    background: var(--gold);
+    border: none;
+    color: var(--black);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.1em;
+    padding: 20px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .btn-analyze:hover {
+    background: #FFB800;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(245,168,0,0.35);
+  }
+
+  .btn-analyze:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-analyze .arrow {
+    font-size: 20px;
+    transition: transform 0.2s;
+  }
+
+  .btn-analyze:hover .arrow { transform: translateX(4px); }
+
+  /* ── LOADING STATE ── */
+  .loading-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 48px;
+    background: var(--black-2);
+    border: 1px solid rgba(245,168,0,0.15);
+    margin-top: 32px;
+  }
+
+  .loading-state.active { display: flex; }
+
+  .loading-bar-wrap {
+    width: 100%;
+    height: 3px;
+    background: rgba(245,168,0,0.1);
+    overflow: hidden;
+  }
+
+  .loading-bar {
+    height: 100%;
+    background: var(--gold);
+    width: 0%;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 12px rgba(245,168,0,0.6);
+  }
+
+  .loading-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey);
+  }
+
+  .loading-dot {
+    animation: blink 1s infinite;
+    display: inline-block;
+  }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── RESULTS ── */
+  .results-block {
+    display: none;
+    margin-top: 32px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .results-block.active { display: block; }
+
+  .score-header {
+    background: var(--black-2);
+    border: 1px solid rgba(245,168,0,0.2);
+    padding: 32px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .score-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gold);
+  }
+
+  .score-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .score-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 88px;
+    line-height: 1;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(245,168,0,0.3);
+  }
+
+  .score-denom {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--grey);
+    padding-bottom: 12px;
+  }
+
+  .score-verdict {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: right;
+    padding-bottom: 12px;
+    max-width: 200px;
+  }
+
+  .score-bars {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  .score-bar-item {}
+
+  .score-bar-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--grey);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .score-bar-label span { color: var(--white); }
+
+  .score-bar-track {
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    background: var(--gold);
+    width: 0%;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+  }
+
+  /* issues */
+  .issues-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .issue-card {
+    background: var(--black-2);
+    border-left: 3px solid var(--grey);
+    padding: 20px 20px 20px 20px;
+    position: relative;
+    transition: transform 0.2s;
+  }
+
+  .issue-card:hover { transform: translateX(4px); }
+  .issue-card.critical { border-left-color: var(--danger); }
+  .issue-card.warning { border-left-color: var(--warning); }
+  .issue-card.minor { border-left-color: var(--ok); }
+
+  .issue-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .issue-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--white);
+    flex: 1;
+    padding-right: 12px;
+  }
+
+  .issue-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    flex-shrink: 0;
+  }
+
+  .issue-badge.critical { background: var(--danger); color: #fff; }
+  .issue-badge.warning { background: var(--warning); color: #000; }
+  .issue-badge.minor { background: var(--ok); color: #000; }
+
+  .issue-desc {
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    color: var(--grey);
+    line-height: 1.6;
+  }
+
+  /* CTA bottom */
+  .cta-block {
+    background: var(--black-2);
+    border: 1px solid rgba(245,168,0,0.2);
+    padding: 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    margin-top: 24px;
+  }
+
+  .cta-block::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+  }
+
+  .cta-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .cta-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .cta-sub {
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    color: var(--grey);
+    margin-bottom: 20px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid rgba(245,168,0,0.1);
+    padding: 24px;
+    text-align: center;
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .footer-dot {
+    color: var(--gold);
+    opacity: 0.5;
+  }
+
+  .footer-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--grey);
+  }
+
+  .footer-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── RATE LIMIT MSG ── */
+  .rate-limit-msg {
+    display: none;
+    background: rgba(255, 59, 48, 0.08);
+    border: 1px solid rgba(255, 59, 48, 0.25);
+    border-left: 3px solid var(--danger);
+    padding: 16px 20px;
+    margin-top: 16px;
+  }
+
+  .rate-limit-msg.active { display: block; }
+
+  .rate-limit-msg p {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #FF6B6B;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(0.8); }
+    50% { opacity: 1; transform: scaleY(1); }
+  }
+
+  /* ── HIDDEN FILE INPUT ── */
+  #cv-input { display: none; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 600px) {
+    header { padding: 14px 20px; }
+    .hero { padding: 90px 20px 48px; }
+    .stats-inner { flex-direction: column; gap: 0; }
+    .stat-item { border-right: none; border-bottom: 1px solid rgba(245,168,0,0.12); padding: 16px 24px; justify-content: center; }
+    .stat-item:last-child { border-bottom: none; }
+    .score-bars { grid-template-columns: 1fr; }
+    .tool-section { padding: 48px 20px; }
+  }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="badge">🔍 Analyse IA réelle — Basée sur 4 700+ annonces Seek WA</div>
-  <h1>TON CV<br><span>PASSE PAS</span><br>L'ATS</h1>
-  <p>Upload ton CV, choisis ton métier FIFO ciblé.<br>L'IA analyse vraiment ton document et t'explique pourquoi les recruteurs ne le voient jamais.</p>
-</div>
+<!-- HEADER -->
+<header>
+  <div class="header-brand"><span>iBuild</span> ATS Audit</div>
+  <div class="header-badge">FIFO Australia</div>
+</header>
 
-<div class="card" id="form-section">
-  <div class="card-label">01 — Ton CV</div>
-  <div class="upload-zone" id="upload-zone">
-    <input type="file" id="cv-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
-    <div class="upload-icon">📄</div>
-    <p><strong>Dépose ton CV ici</strong><br>ou clique pour sélectionner</p>
-    <div class="file-types">PDF · DOCX · JPG · PNG</div>
-  </div>
-  <div class="file-preview" id="file-preview">
-    <div class="file-preview-icon">📄</div>
-    <div class="file-preview-name" id="file-name">—</div>
-    <button class="file-preview-remove" id="remove-file">✕</button>
-  </div>
-</div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-text">ATS</div>
 
-<div class="card" id="job-section">
-  <div class="card-label">02 — Métier FIFO ciblé</div>
-  <div class="select-wrap">
-    <select id="job-select">
-      <option value="">Sélectionne ton métier…</option>
-      <optgroup label="— Maintenance & Trades">
-        <option value="trades_assistant" data-label="Trades Assistant">Trades Assistant</option>
-        <option value="mechanical_fitter" data-label="Mechanical Fitter">Mechanical Fitter</option>
-        <option value="hd_fitter" data-label="HD Fitter / Heavy Diesel Mechanic">HD Fitter / Heavy Diesel Mechanic</option>
-        <option value="boilermaker" data-label="Boilermaker">Boilermaker</option>
-        <option value="welder" data-label="Welder / Structural Welder">Welder / Structural Welder</option>
-        <option value="electrician" data-label="Electrician / Shutdown Electrician">Electrician / Shutdown Electrician</option>
-        <option value="instrumentation_tech" data-label="Instrumentation Technician">Instrumentation Technician</option>
-        <option value="serviceperson" data-label="Serviceperson / Workshop Hand">Serviceperson / Workshop Hand</option>
-        <option value="polywelder" data-label="Polywelder / Dewatering Tech">Polywelder / Dewatering Tech</option>
-      </optgroup>
-      <optgroup label="— Conveyor & Belt">
-        <option value="belt_splicer" data-label="Belt Splicer / Conveyor Technician">Belt Splicer / Conveyor Technician</option>
-      </optgroup>
-      <optgroup label="— Plant & Equipment">
-        <option value="civil_plant" data-label="Civil Plant Operator">Civil Plant Operator</option>
-        <option value="ewp_operator" data-label="EWP Operator / Elevated Work Platform">EWP Operator / Elevated Work Platform</option>
-        <option value="crane_operator" data-label="Crane Operator">Crane Operator</option>
-        <option value="dump_truck" data-label="Dump Truck Operator / Haul Truck Operator">Dump Truck Operator / Haul Truck Operator</option>
-        <option value="water_cart" data-label="Water Cart Operator">Water Cart Operator</option>
-        <option value="road_train" data-label="Road Train Driver">Road Train Driver</option>
-        <option value="storeman" data-label="Storeman / Warehouse FIFO">Storeman / Warehouse FIFO</option>
-      </optgroup>
-      <optgroup label="— Industrial Services">
-        <option value="vac_truck" data-label="Vac Truck Operator">Vac Truck Operator</option>
-        <option value="hpwj" data-label="HPWJ Operator">HPWJ Operator</option>
-        <option value="hr_driver" data-label="HR Driver Waste Management">HR Driver Waste Management</option>
-        <option value="is_technician" data-label="Industrial Services Technician">Industrial Services Technician</option>
-        <option value="process_tech" data-label="Process Technician">Process Technician</option>
-      </optgroup>
-      <optgroup label="— Underground">
-        <option value="jumbo_operator" data-label="Jumbo Operator">Jumbo Operator</option>
-        <option value="nipper_ug" data-label="Nipper UG">Nipper UG</option>
-        <option value="ug_service_crew" data-label="UG Service Crew">UG Service Crew</option>
-        <option value="driller_offsider" data-label="Driller Offsider / Drilling Assistant">Driller Offsider / Drilling Assistant</option>
-        <option value="ug_electrician" data-label="Underground Electrician">Underground Electrician</option>
-      </optgroup>
-      <optgroup label="— Rigging & Access">
-        <option value="rigger" data-label="Rigger">Rigger</option>
-        <option value="dogman" data-label="Dogman">Dogman</option>
-        <option value="scaffolding" data-label="Scaffolder">Scaffolder</option>
-        <option value="rope_access" data-label="Rope Access Technician (IRATA)">Rope Access Technician (IRATA)</option>
-        <option value="painter_blaster" data-label="Painter / Blaster">Painter / Blaster</option>
-      </optgroup>
-      <optgroup label="— Marine">
-        <option value="deckhand" data-label="Marine / Dredging Deckhand">Marine / Dredging Deckhand</option>
-      </optgroup>
-      <optgroup label="— Camp & Catering">
-        <option value="fifo_chef" data-label="FIFO Chef / Camp Chef">FIFO Chef / Camp Chef</option>
-        <option value="camp_services" data-label="Utility All Rounder">Utility All Rounder</option>
-      </optgroup>
-    </select>
-    <div class="select-arrow">▼</div>
+  <div class="hero-eyebrow">
+    <div class="eyebrow-line"></div>
+    <div class="eyebrow-text">La seule IA qui a lu toutes les offres d'emploi Seek pour le FIFO en Australie</div>
+    <div class="eyebrow-line"></div>
+  </div>
+
+  <h1 class="hero-title">
+    <span class="line-1">TON CV</span>
+    <span class="line-2">PASSE PAS</span>
+    <span class="line-3">L'ATS</span>
+  </h1>
+
+  <p class="hero-sub">
+    Upload ton CV. Choisis ton métier FIFO ciblé.<br>
+    <strong>L'IA te dit exactement pourquoi il est rejeté.</strong>
+  </p>
+
+  <div class="hero-cta-group">
+    <a href="#tool" class="btn-primary">Analyser mon CV</a>
+    <div class="hero-scroll-hint">
+      <div class="scroll-line"></div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS STRIP -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-num">5510+</div>
+      <div class="stat-label">Annonces Seek FIFO WA analysées</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">3</div>
+      <div class="stat-label">Niveaux de sévérité</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">100%</div>
+      <div class="stat-label">Spécifique FIFO Mining ATS</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">IA</div>
+      <div class="stat-label">Claude × BuildNotBorn</div>
+    </div>
   </div>
 </div>
 
-<button class="btn-audit" id="btn-audit" disabled>ANALYSER MON CV →</button>
+<!-- TOOL SECTION -->
+<section class="tool-section" id="tool">
+  <div class="section-label">L'outil</div>
+  <h2 class="section-title">Lance l'analyse</h2>
 
-<div class="error-card" id="error-card">Une erreur s'est produite lors de l'analyse. Vérifie que ton fichier est lisible et réessaie.</div>
-
-<div class="loading" id="loading">
-  <div class="spinner"></div>
-  <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;">Analyse IA en cours…</div>
-  <div class="loading-steps">
-    <div class="loading-step" id="step1"><div class="step-dot"></div>Lecture du format et structure</div>
-    <div class="loading-step" id="step2"><div class="step-dot"></div>Détection des erreurs ATS</div>
-    <div class="loading-step" id="step3"><div class="step-dot"></div>Analyse des keywords métier WA</div>
-    <div class="loading-step" id="step4"><div class="step-dot"></div>Calcul du score final</div>
+  <!-- Upload -->
+  <div class="step-label">
+    <div class="step-num">01</div>
+    <div class="step-text">Dépose ton CV</div>
   </div>
-</div>
 
-<div class="results" id="results">
-  <div class="score-card" id="score-card">
-    <div class="score-ring">
-      <svg viewBox="0 0 100 100">
-        <circle class="score-ring-bg" cx="50" cy="50" r="43"/>
-        <circle class="score-ring-fill" id="ring-fill" cx="50" cy="50" r="43" stroke-dasharray="270" stroke-dashoffset="270"/>
-      </svg>
-      <div class="score-ring-text">
-        <div class="score-number" id="score-display">0</div>
-        <div class="score-label">/100</div>
+  <div class="upload-zone" id="upload-zone" onclick="document.getElementById('cv-input').click()">
+    <div class="upload-default" id="upload-default">
+      <span class="upload-icon">📄</span>
+      <div class="upload-main">Dépose ton CV ici</div>
+      <div class="upload-sub">ou clique pour sélectionner</div>
+      <div class="upload-formats">
+        <span class="format-tag">PDF</span>
+        <span class="format-tag">DOCX</span>
+        <span class="format-tag">JPG</span>
+        <span class="format-tag">PNG</span>
       </div>
     </div>
-    <div class="score-info">
-      <div class="score-verdict" id="score-verdict">—</div>
-      <div class="score-subtitle" id="score-subtitle">—</div>
-      <div class="score-bars" id="score-bars">
-        <div class="bar-row">
-          <div class="bar-label">Format ATS</div>
-          <div class="bar-track"><div class="bar-fill" id="bar1" style="background:var(--orange)"></div></div>
-          <div class="bar-score" id="barscore1" style="color:var(--orange)">—</div>
+    <div class="file-info" id="file-info">
+      <span class="upload-icon">✅</span>
+      <div class="file-name" id="file-name">—</div>
+      <div class="file-size" id="file-size">—</div>
+    </div>
+  </div>
+
+  <input type="file" id="cv-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+
+  <!-- Job selector -->
+  <div class="step-label">
+    <div class="step-num">02</div>
+    <div class="step-text">Métier FIFO ciblé</div>
+  </div>
+
+  <select class="job-select" id="job-select">
+    <option value="">Sélectionne ton métier...</option>
+    <optgroup label="Maintenance & Trades">
+      <option value="trades_assistant">Trades Assistant</option>
+      <option value="mechanical_fitter">Mechanical Fitter</option>
+      <option value="hd_fitter">HD Fitter / Heavy Diesel Mechanic</option>
+      <option value="boilermaker">Boilermaker</option>
+      <option value="welder">Welder / Structural Welder</option>
+      <option value="electrician">Electrician / Shutdown Electrician</option>
+      <option value="instrumentation_tech">Instrumentation Technician</option>
+      <option value="serviceperson">Serviceperson / Workshop Hand</option>
+      <option value="polywelder">Polywelder / Dewatering Tech</option>
+    </optgroup>
+    <optgroup label="Conveyor & Belt">
+      <option value="belt_splicer">Belt Splicer / Conveyor Technician</option>
+    </optgroup>
+    <optgroup label="Plant & Equipment">
+      <option value="civil_plant">Civil Plant Operator</option>
+      <option value="ewp_operator">EWP Operator / Elevated Work Platform</option>
+      <option value="crane_operator">Crane Operator</option>
+      <option value="dump_truck">Dump Truck Operator / Haul Truck Operator</option>
+      <option value="water_cart">Water Cart Operator</option>
+      <option value="road_train">Road Train Driver</option>
+      <option value="storeman">Storeman / Warehouse FIFO</option>
+    </optgroup>
+    <optgroup label="Industrial Services">
+      <option value="vac_truck">Vac Truck Operator</option>
+      <option value="hpwj">HPWJ Operator</option>
+      <option value="hr_driver">HR Driver Waste Management</option>
+      <option value="is_technician">Industrial Services Technician</option>
+      <option value="process_tech">Process Technician</option>
+    </optgroup>
+    <optgroup label="Underground">
+      <option value="jumbo_operator">Jumbo Operator</option>
+      <option value="nipper_ug">Nipper UG</option>
+      <option value="ug_service_crew">UG Service Crew</option>
+      <option value="driller_offsider">Driller Offsider / Drilling Assistant</option>
+      <option value="ug_electrician">Underground Electrician</option>
+    </optgroup>
+    <optgroup label="Rigging & Access">
+      <option value="rigger">Rigger</option>
+      <option value="dogman">Dogman</option>
+      <option value="scaffolding">Scaffolder</option>
+      <option value="rope_access">Rope Access Technician (IRATA)</option>
+      <option value="painter_blaster">Painter / Blaster</option>
+    </optgroup>
+    <optgroup label="Marine">
+      <option value="deckhand">Marine / Dredging Deckhand</option>
+    </optgroup>
+    <optgroup label="Camp & Catering">
+      <option value="fifo_chef">FIFO Chef / Camp Chef</option>
+      <option value="camp_services">Utility All Rounder</option>
+    </optgroup>
+  </select>
+
+  <!-- CTA -->
+  <button class="btn-analyze" id="btn-analyze" disabled>
+    Analyser mon CV <span class="arrow">→</span>
+  </button>
+
+  <!-- Rate limit -->
+  <div class="rate-limit-msg" id="rate-limit-msg">
+    <p>⚠️ Limite atteinte. Réessaie dans quelques instants.</p>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" id="loading-state">
+    <div class="loading-bar-wrap">
+      <div class="loading-bar" id="loading-bar"></div>
+    </div>
+    <div class="loading-text">
+      Analyse en cours
+      <span class="loading-dot">.</span>
+      <span class="loading-dot">.</span>
+      <span class="loading-dot">.</span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-block" id="results-block">
+    <div class="score-header">
+      <div class="score-top">
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey);margin-bottom:4px;">Score Global</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <div class="score-num" id="score-total">—</div>
+            <div class="score-denom">/100</div>
+          </div>
         </div>
-        <div class="bar-row">
-          <div class="bar-label">Keywords</div>
-          <div class="bar-track"><div class="bar-fill" id="bar2" style="background:var(--red)"></div></div>
-          <div class="bar-score" id="barscore2" style="color:var(--red)">—</div>
+        <div class="score-verdict" id="score-verdict"></div>
+      </div>
+      <div class="score-bars">
+        <div class="score-bar-item">
+          <div class="score-bar-label">Format <span id="score-format-val">—</span></div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="bar-format"></div></div>
         </div>
-        <div class="bar-row">
-          <div class="bar-label">Complétude</div>
-          <div class="bar-track"><div class="bar-fill" id="bar3" style="background:var(--yellow)"></div></div>
-          <div class="bar-score" id="barscore3" style="color:var(--yellow)">—</div>
+        <div class="score-bar-item">
+          <div class="score-bar-label">Keywords <span id="score-kw-val">—</span></div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="bar-kw"></div></div>
+        </div>
+        <div class="score-bar-item">
+          <div class="score-bar-label">Complétude <span id="score-comp-val">—</span></div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="bar-comp"></div></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="areas-card" id="areas-card">
-    <div class="areas-title">ZONES À CORRIGER</div>
-    <div class="areas-subtitle">Diagnostic identifié. Les corrections exactes sont dans <strong style="color:var(--white)">The Site Access</strong> — ou via DM.</div>
-    <div id="areas-list"></div>
-  </div>
+    <div class="issues-list" id="issues-list"></div>
 
-  <div class="issues-card" id="issues-card">
-    <div class="issues-title">PROBLÈMES DÉTECTÉS <span class="count-badge" id="issue-count">0</span></div>
-    <div id="issues-list"></div>
-  </div>
-
-  <div class="cta-card">
-    <div class="cta-eyebrow">Tu sais ce qui cloche. Maintenant</div>
-    <div class="cta-title">CORRIGE-LE<br>POUR DE VRAI</div>
-    <div class="cta-score-pill" id="cta-score-pill">Score ATS : — /100</div>
-    <div class="cta-divider"></div>
-    <div class="cta-sub">Le diagnostic est là. Les recruteurs WA ont des critères précis — et ton CV ne les coche pas encore tous. La correction exacte, étape par étape, c'est dans <strong>The Site Access</strong>.</div>
-    <div class="cta-steps">
-      <div class="cta-step"><div class="cta-step-num">1</div><div>Follow <strong>@BuildNotBorn.FiFo</strong> sur Instagram</div></div>
-      <div class="cta-step"><div class="cta-step-num">2</div><div>DM le mot <strong>"AUDIT"</strong> avec ton score</div></div>
-      <div class="cta-step"><div class="cta-step-num">3</div><div>Reçois le plan de correction adapté à ton métier</div></div>
+    <div class="cta-block">
+      <div class="cta-label">Prochaine étape</div>
+      <div class="cta-title">La solution complète t'attend</div>
+      <div class="cta-sub">Les corrections exactes sont dans The Site Access</div>
+      <a href="https://www.skool.com/mining-elite" target="_blank" class="btn-primary">Rejoindre The Site Access</a>
     </div>
-    <a href="https://www.instagram.com/buildnotborn.fifo" target="_blank" class="cta-btn">DM SUR INSTAGRAM ↗</a>
-    <div class="ig-handle">@BuildNotBorn.FiFo · The Site Access</div>
   </div>
-</div>
+</section>
 
-<div class="footer">iBuild — Mining Elite · BuildNotBorn.FiFo · Analyse IA basée sur corpus 4 700+ annonces Seek WA</div>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <span class="footer-brand">BuildNotBorn</span>
+    <span class="footer-dot">·</span>
+    <span class="footer-text">Mining Elite</span>
+    <span class="footer-dot">·</span>
+    <span class="footer-text">Analyse IA basée sur 5 510+ annonces Seek FIFO</span>
+  </div>
+</footer>
 
 <script>
-const fileInput = document.getElementById('cv-file');
-const uploadZone = document.getElementById('upload-zone');
-const filePreview = document.getElementById('file-preview');
-const fileName = document.getElementById('file-name');
-const removeFile = document.getElementById('remove-file');
-const jobSelect = document.getElementById('job-select');
-const btnAudit = document.getElementById('btn-audit');
-const formSection = document.getElementById('form-section');
-const jobSection = document.getElementById('job-section');
-const loading = document.getElementById('loading');
-const results = document.getElementById('results');
-const errorCard = document.getElementById('error-card');
-let hasFile = false, hasJob = false, currentFile = null;
-function updateBtn() { btnAudit.disabled = !(hasFile && hasJob); }
-fileInput.addEventListener('change', () => {
-  if (fileInput.files.length > 0) { currentFile = fileInput.files[0]; hasFile = true; fileName.textContent = currentFile.name; filePreview.classList.add('show'); updateBtn(); }
-});
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault(); uploadZone.classList.remove('drag-over');
-  if (e.dataTransfer.files.length > 0) { currentFile = e.dataTransfer.files[0]; hasFile = true; fileName.textContent = currentFile.name; filePreview.classList.add('show'); updateBtn(); }
-});
-removeFile.addEventListener('click', () => { hasFile = false; currentFile = null; fileInput.value = ''; filePreview.classList.remove('show'); updateBtn(); });
-jobSelect.addEventListener('change', () => { hasJob = jobSelect.value !== ''; updateBtn(); });
-function getVerdict(score) {
-  if (score < 30) return { text: 'CV INVISIBLE', sub: "Ton CV ne passe aucun filtre ATS. Il n'atteint jamais un recruteur.", color: 'var(--red)', stroke: '#E63329' };
-  if (score < 50) return { text: 'SCORE CRITIQUE', sub: 'La majorité des candidatures sont rejetées automatiquement à ce niveau.', color: 'var(--orange)', stroke: '#F47B20' };
-  if (score < 70) return { text: 'PASSABLE MAIS RISQUÉ', sub: 'Quelques filtres sont passés — mais tu perds face aux profils optimisés.', color: 'var(--yellow)', stroke: '#FFD050' };
-  return { text: 'SCORE CORRECT', sub: "Il reste des angles d'amélioration pour maximiser tes chances.", color: 'var(--green)', stroke: '#2CB67D' };
-}
-function animateScore(target) {
-  const el = document.getElementById('score-display'); let current = 0; const step = target / 60;
-  const interval = setInterval(() => { current = Math.min(current + step, target); el.textContent = Math.round(current); if (current >= target) clearInterval(interval); }, 16);
-}
-function animateRing(score, strokeColor) {
-  const ring = document.getElementById('ring-fill'); ring.style.stroke = strokeColor;
-  const offset = 270 - (score / 100) * 270; setTimeout(() => { ring.style.strokeDashoffset = offset; }, 200);
-}
-function animateBars(f, k, c) {
-  setTimeout(() => {
-    document.getElementById('bar1').style.width = Math.round((f/40)*100) + '%';
-    document.getElementById('bar2').style.width = Math.round((k/40)*100) + '%';
-    document.getElementById('bar3').style.width = Math.round((c/20)*100) + '%';
-    document.getElementById('barscore1').textContent = f + '/40';
-    document.getElementById('barscore2').textContent = k + '/40';
-    document.getElementById('barscore3').textContent = c + '/20';
-  }, 400);
-}
-async function fileToBase64(file) {
-  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
-}
-async function extractText(file) {
-  return new Promise((resolve) => {
-    if (file.type.startsWith('image/') || file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx') || file.name.endsWith('.doc')) { resolve(null); return; }
-    const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result); reader.onerror = () => resolve(null); reader.readAsText(file);
-  });
-}
-function startLoadingAnimation() {
-  const steps = ['step1','step2','step3','step4'];
-  steps.forEach((id, i) => { setTimeout(() => { if (i > 0) document.getElementById(steps[i-1]).className = 'loading-step done'; document.getElementById(id).className = 'loading-step active'; }, i * 1200); });
-}
-function showRateLimit() {
-  loading.classList.remove('show'); formSection.style.display = ''; jobSection.style.display = ''; btnAudit.style.display = 'none';
-  errorCard.innerHTML = `<div style="font-size:22px;margin-bottom:8px;">⏳</div><div style="font-size:15px;font-weight:500;color:var(--white);margin-bottom:6px;">Tu as déjà utilisé ton analyse ce mois-ci.</div><div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Ton diagnostic est posé — maintenant il faut corriger.<br>DM-moi avec ton score et je t'envoie le plan de correction adapté à ton métier. Gratuit.</div><a href="https://www.instagram.com/buildnotborn.fifo" target="_blank" style="display:inline-block;background:var(--yellow);color:var(--black);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.06em;padding:12px 24px;border-radius:8px;text-decoration:none;">OBTENIR MON PLAN DE CORRECTION →</a>`;
-  errorCard.classList.add('show');
-}
-btnAudit.addEventListener('click', async () => {
-  const today = new Date().toISOString().slice(0, 7);
-  const lastAnalysis = localStorage.getItem('ats_last_analysis');
-  if (lastAnalysis === today) { showRateLimit(); return; }
-  errorCard.classList.remove('show'); formSection.style.display = 'none'; jobSection.style.display = 'none'; btnAudit.style.display = 'none'; loading.classList.add('show'); startLoadingAnimation();
-  try {
-    const job = jobSelect.value; const jobLabel = jobSelect.options[jobSelect.selectedIndex].getAttribute('data-label');
-    const isImage = currentFile.type.startsWith('image/'); const isPDF = currentFile.type === 'application/pdf';
-    let payload = { job, jobLabel };
-    if (isImage) { const b64 = await fileToBase64(currentFile); payload.cvImage = { data: b64, mediaType: currentFile.type }; }
-    else if (isPDF) { const b64 = await fileToBase64(currentFile); payload.cvImage = { data: b64, mediaType: 'application/pdf' }; }
-    else if (currentFile.name.endsWith('.docx') || currentFile.name.endsWith('.doc')) { const b64 = await fileToBase64(currentFile); payload.cvDocx = { data: b64 }; }
-    else { const text = await extractText(currentFile); payload.cvText = text || 'CV text could not be extracted'; }
+  const cvInput = document.getElementById('cv-input');
+  const uploadZone = document.getElementById('upload-zone');
+  const uploadDefault = document.getElementById('upload-default');
+  const fileInfo = document.getElementById('file-info');
+  const fileName = document.getElementById('file-name');
+  const fileSize = document.getElementById('file-size');
+  const jobSelect = document.getElementById('job-select');
+  const btnAnalyze = document.getElementById('btn-analyze');
+  const loadingState = document.getElementById('loading-state');
+  const loadingBar = document.getElementById('loading-bar');
+  const resultsBlock = document.getElementById('results-block');
+  const rateLimitMsg = document.getElementById('rate-limit-msg');
 
-    const bodyStr = JSON.stringify(payload);
-    console.log('BODY SIZE KB:', Math.round(bodyStr.length / 1024));
+  let selectedFile = null;
 
-    const response = await fetch('/.netlify/functions/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: bodyStr });
-    if (response.status === 429) { showRateLimit(); return; }
-    if (!response.ok) throw new Error('API call failed');
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-    localStorage.setItem('ats_last_analysis', today);
-    setTimeout(() => { document.getElementById('step4').className = 'loading-step done'; }, 200);
-    setTimeout(() => { loading.classList.remove('show'); renderResults(data); }, 1000);
-  } catch (err) {
-    console.error(err); loading.classList.remove('show'); formSection.style.display = ''; jobSection.style.display = ''; btnAudit.style.display = '';
-    errorCard.innerHTML = "Une erreur s'est produite lors de l'analyse. Vérifie que ton fichier est lisible et réessaie."; errorCard.classList.add('show');
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
   }
-});
-function renderResults(data) {
-  const scores = data.scores; const verdict = getVerdict(scores.total);
-  document.getElementById('score-verdict').textContent = data.verdict || verdict.text;
-  document.getElementById('score-verdict').style.color = verdict.color;
-  document.getElementById('score-subtitle').textContent = verdict.sub;
-  document.getElementById('cta-score-pill').textContent = 'Score ATS : ' + scores.total + ' /100';
-  document.getElementById('issue-count').textContent = (data.issues || []).length;
-  const areasList = document.getElementById('areas-list'); areasList.innerHTML = '';
-  (data.improvement_areas || []).forEach((area, i) => { areasList.innerHTML += '<div class="area-item"><div class="area-num">' + (i+1) + '.</div><div>' + area + '</div></div>'; });
-  const issuesList = document.getElementById('issues-list'); issuesList.innerHTML = '';
-  (data.issues || []).forEach(issue => {
-    const sev = issue.severity || 'medium';
-    const sevClass = sev === 'critical' ? 'sev-critical' : sev === 'high' ? 'sev-high' : 'sev-med';
-    const tagClass = sev === 'critical' ? 'tag-critical' : sev === 'high' ? 'tag-high' : 'tag-med';
-    issuesList.innerHTML += '<div class="issue-item"><div class="issue-dot ' + sevClass + '"></div><div class="issue-body"><div class="issue-title">' + issue.title + '</div><div class="issue-desc">' + issue.desc + '</div><span class="issue-tag ' + tagClass + '">' + issue.tag + '</span></div></div>';
+
+  function updateBtn() {
+    btnAnalyze.disabled = !(selectedFile && jobSelect.value);
+  }
+
+  function showFile(file) {
+    selectedFile = file;
+    uploadDefault.classList.add('hidden');
+    fileInfo.classList.add('visible');
+    uploadZone.classList.add('has-file');
+    fileName.textContent = file.name;
+    fileSize.textContent = formatBytes(file.size);
+    updateBtn();
+  }
+
+  cvInput.addEventListener('change', e => {
+    if (e.target.files[0]) showFile(e.target.files[0]);
   });
-  results.classList.add('show'); animateScore(scores.total); animateRing(scores.total, verdict.stroke); animateBars(scores.format, scores.keywords, scores.completeness);
-}
+
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'rgba(245,168,0,0.8)'; });
+  uploadZone.addEventListener('dragleave', () => { if (!selectedFile) uploadZone.style.borderColor = ''; });
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    if (e.dataTransfer.files[0]) showFile(e.dataTransfer.files[0]);
+  });
+
+  jobSelect.addEventListener('change', updateBtn);
+
+  function animateBar(id, pct) {
+    setTimeout(() => { document.getElementById(id).style.width = pct + '%'; }, 100);
+  }
+
+  function renderResults(data) {
+    const total = data.global_score ?? data.scores?.total ?? 0;
+    document.getElementById('score-total').textContent = total;
+    const verdict = document.getElementById('score-verdict');
+    verdict.textContent = data.verdict ?? '';
+    verdict.style.color = (total >= 75) ? 'var(--ok)' : (total >= 50) ? 'var(--warning)' : 'var(--danger)';
+
+    const fmt = data.scores?.format ?? 0;
+    const kw = data.scores?.keywords ?? 0;
+    const comp = data.scores?.completeness ?? 0;
+    document.getElementById('score-format-val').textContent = fmt + '/40';
+    document.getElementById('score-kw-val').textContent = kw + '/40';
+    document.getElementById('score-comp-val').textContent = comp + '/20';
+    animateBar('bar-format', (fmt/40)*100);
+    animateBar('bar-kw', (kw/40)*100);
+    animateBar('bar-comp', (comp/20)*100);
+
+    const issuesList = document.getElementById('issues-list');
+    issuesList.innerHTML = '';
+    (data.issues ?? []).forEach(issue => {
+      const sev = issue.severity ?? 'minor';
+      const badgeMap = { critical: 'BLOQUANT', warning: 'À CORRIGER', minor: 'OPTIMISATION' };
+      const card = document.createElement('div');
+      card.className = `issue-card ${sev}`;
+      card.innerHTML = `
+        <div class="issue-top">
+          <div class="issue-title">${issue.title ?? ''}</div>
+          <div class="issue-badge ${sev}">${badgeMap[sev] ?? sev}</div>
+        </div>
+        <div class="issue-desc">${issue.desc ?? ''}</div>
+      `;
+      issuesList.appendChild(card);
+    });
+
+    resultsBlock.classList.add('active');
+    resultsBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function toBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  btnAnalyze.addEventListener('click', async () => {
+    if (!selectedFile || !jobSelect.value) return;
+
+    rateLimitMsg.classList.remove('active');
+    loadingState.classList.add('active');
+    resultsBlock.classList.remove('active');
+    btnAnalyze.disabled = true;
+
+    let prog = 0;
+    const interval = setInterval(() => {
+      prog = Math.min(prog + Math.random() * 8, 88);
+      loadingBar.style.width = prog + '%';
+    }, 400);
+
+    try {
+      const ext = selectedFile.name.split('.').pop().toLowerCase();
+      const b64 = await toBase64(selectedFile);
+      const jobLabel = jobSelect.options[jobSelect.selectedIndex].text;
+
+      const body = { jobLabel };
+      if (['jpg','jpeg','png','webp'].includes(ext)) body.cvImage = b64;
+      else if (ext === 'pdf') body.cvPdf = b64;
+      else body.cvDocx = b64;
+
+      const res = await fetch('/.netlify/functions/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      clearInterval(interval);
+      loadingBar.style.width = '100%';
+
+      if (res.status === 429) {
+        rateLimitMsg.classList.add('active');
+        loadingState.classList.remove('active');
+        loadingBar.style.width = '0%';
+        btnAnalyze.disabled = false;
+        return;
+      }
+
+      const data = await res.json();
+      setTimeout(() => {
+        loadingState.classList.remove('active');
+        loadingBar.style.width = '0%';
+        renderResults(data);
+        btnAnalyze.disabled = false;
+      }, 400);
+
+    } catch (err) {
+      clearInterval(interval);
+      loadingState.classList.remove('active');
+      loadingBar.style.width = '0%';
+      btnAnalyze.disabled = false;
+      console.error(err);
+    }
+  });
 </script>
 </body>
 </html>
