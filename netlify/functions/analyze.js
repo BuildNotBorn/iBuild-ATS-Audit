@@ -43,12 +43,11 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json'
   };
 
-  // RATE LIMIT DÉSACTIVÉ TEMPORAIREMENT — TESTS DESIGN
-  // const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
-  // const allowed = await checkRateLimit(ip);
-  // if (!allowed) {
-  //   return { statusCode: 429, headers, body: JSON.stringify({ error: 'rate_limit' }) };
-  // }
+  const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
+  const allowed = await checkRateLimit(ip);
+  if (!allowed) {
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'rate_limit' }) };
+  }
 
   let rawText = 'NOT_YET_ASSIGNED';
 
