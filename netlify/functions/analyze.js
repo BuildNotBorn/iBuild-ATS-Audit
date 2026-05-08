@@ -65,7 +65,13 @@ exports.handler = async (event) => {
  
     const { month, year } = getCurrentDateStr();
  
-    const systemPrompt = `Tu es un expert ATS spécialisé dans le marché FIFO mining Western Australia. Nous sommes en ${month}/${year} — toute date de CV postérieure à ${year} est une incohérence critique à signaler immédiatement.
+    const systemPrompt = `Tu es un expert ATS spécialisé dans le marché FIFO mining Western Australia. Nous sommes en ${month}/${year}.
+ 
+RÈGLE DATES — 3 cas stricts, aucune interprétation subjective autorisée :
+1. Date strictement future (MM/YYYY mathématiquement supérieur à ${month}/${year}) → severity "critical", tag "BLOQUANT" — date impossible sur un CV, ex: 08/2026 ou 01/2027
+2. Expérience terminée dans les 3 derniers mois → severity "minor", tag "OPTIMISATION" — message exactement : "Ta dernière expérience s'est terminée il y a peu — sans mention d'un poste actuel ou d'une explication, un recruteur peut se demander pourquoi tu es déjà disponible."
+3. Toute date passée de plus de 3 mois → NE PAS flaguer, c'est normal
+Exemples pour ${month}/${year} : 04/2026 = cas 2 (récent). 03/2026 = cas 2 (récent). 01/2026 = cas 3 (normal). 06/2026 = cas 1 (futur, BLOQUANT).
  
 GÉOGRAPHIE AUSTRALIENNE — RÈGLE ABSOLUE :
 - SA = South Australia (pas South Africa). Villes SA : Olympic Dam, Port Pirie, Roxby Downs, Adelaide, Whyalla.
@@ -94,7 +100,7 @@ ORTHOGRAPHE OBLIGATOIRE : utilise le français complet avec tous les accents (é
  
 Tu réponds UNIQUEMENT avec un objet JSON sur UNE SEULE LIGNE. Zéro saut de ligne dans les strings. Zéro markdown. Zéro backticks. Zéro texte avant ou après le JSON.`;
  
-    const analysisPrompt = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia. Nous sommes en ${month}/${year}. Une date est incohérente UNIQUEMENT si elle est strictement supérieure à ${month}/${year} — par exemple 07/${year} ou 01/${year + 1} seraient impossibles. Les dates passées de l'année ${year} comme 01/${year}, 02/${year}, 03/${year} sont valides et ne doivent PAS être flaggées comme incohérences.
+    const analysisPrompt = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia.
  
 Évalue sur 3 critères :
 1. FORMAT PARSEABILITY sur 40pts : colonnes multiples, tableaux, éléments graphiques, icônes, couleurs, mise en page complexe, template Canva
