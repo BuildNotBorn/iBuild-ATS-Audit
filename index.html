@@ -563,71 +563,130 @@
   .loading-dot:nth-child(2) { animation-delay: 0.2s; }
   .loading-dot:nth-child(3) { animation-delay: 0.4s; }
 
+  /* ── RESULTS DIVIDER ── */
+  .results-divider {
+    display: none;
+    align-items: center;
+    gap: 16px;
+    margin: 48px 0 32px;
+  }
+  .results-divider.active { display: flex; }
+  .results-divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(245,168,0,0.4));
+  }
+  .results-divider-line.right {
+    background: linear-gradient(to left, transparent, rgba(245,168,0,0.4));
+  }
+  .results-divider-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+  }
+
   /* ── RESULTS ── */
   .results-block {
     display: none;
-    margin-top: 32px;
     animation: fadeUp 0.4s ease both;
   }
-
   .results-block.active { display: block; }
 
+  /* Score header — circular + impact */
   .score-header {
     background: var(--black-2);
-    border: 1px solid rgba(245,168,0,0.2);
-    padding: 32px;
+    border: 1px solid rgba(245,168,0,0.15);
+    padding: 40px 32px 32px;
     margin-bottom: 24px;
     position: relative;
     overflow: hidden;
+    text-align: center;
   }
-
   .score-header::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     height: 3px;
-    background: var(--gold);
+    background: var(--score-color, var(--gold));
   }
 
-  .score-top {
+  .score-circle-wrap {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-bottom: 20px;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .score-ring {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin-bottom: 16px;
+  }
+
+  .score-ring svg {
+    transform: rotate(-90deg);
+    width: 140px;
+    height: 140px;
+  }
+
+  .score-ring-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.06);
+    stroke-width: 8;
+  }
+
+  .score-ring-fill {
+    fill: none;
+    stroke: var(--score-color, var(--gold));
+    stroke-width: 8;
+    stroke-linecap: butt;
+    stroke-dasharray: 351;
+    stroke-dashoffset: 351;
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1) 0.3s;
+    filter: drop-shadow(0 0 6px var(--score-color, var(--gold)));
+  }
+
+  .score-ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
   }
 
   .score-num {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 88px;
+    font-size: 56px;
     line-height: 1;
-    color: var(--gold);
-    text-shadow: 0 0 40px rgba(245,168,0,0.3);
+    color: var(--score-color, var(--gold));
   }
 
   .score-denom {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     color: var(--grey);
-    padding-bottom: 12px;
   }
 
   .score-verdict {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    text-align: right;
-    padding-bottom: 12px;
-    max-width: 200px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.05em;
+    color: var(--white);
+    text-align: center;
   }
 
   .score-bars {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
+    gap: 16px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 24px;
   }
 
   .score-bar-item {}
@@ -639,16 +698,15 @@
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--grey);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
   }
-
   .score-bar-label span { color: var(--white); }
 
   .score-bar-track {
     height: 4px;
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.06);
     overflow: hidden;
   }
 
@@ -656,35 +714,66 @@
     height: 100%;
     background: var(--gold);
     width: 0%;
-    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1) 0.5s;
   }
 
-  /* issues */
+  /* ── ISSUES ── */
   .issues-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 24px;
   }
 
   .issue-card {
     background: var(--black-2);
     border-left: 3px solid var(--grey);
-    padding: 20px 20px 20px 20px;
+    padding: 18px 20px 18px 20px;
     position: relative;
-    transition: transform 0.2s;
+    transition: transform 0.2s, background 0.2s;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: issueIn 0.4s ease forwards;
   }
 
-  .issue-card:hover { transform: translateX(4px); }
+  @keyframes issueIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .issue-card:hover {
+    transform: translateX(4px);
+    background: #161616;
+  }
   .issue-card.critical { border-left-color: var(--danger); }
-  .issue-card.warning { border-left-color: var(--warning); }
-  .issue-card.minor { border-left-color: var(--ok); }
+  .issue-card.warning  { border-left-color: var(--warning); }
+  .issue-card.minor    { border-left-color: var(--ok); }
 
   .issue-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 8px;
+    gap: 12px;
+  }
+
+  .issue-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .issue-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    color: var(--grey);
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+
+  .issue-icon {
+    font-size: 14px;
+    flex-shrink: 0;
   }
 
   .issue-title {
@@ -693,8 +782,6 @@
     font-weight: 700;
     letter-spacing: 0.03em;
     color: var(--white);
-    flex: 1;
-    padding-right: 12px;
   }
 
   .issue-badge {
@@ -707,61 +794,87 @@
     clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
     flex-shrink: 0;
   }
-
   .issue-badge.critical { background: var(--danger); color: #fff; }
-  .issue-badge.warning { background: var(--warning); color: #000; }
-  .issue-badge.minor { background: var(--ok); color: #000; }
+  .issue-badge.warning  { background: var(--warning); color: #000; }
+  .issue-badge.minor    { background: var(--ok); color: #000; }
 
   .issue-desc {
     font-family: 'Barlow', sans-serif;
     font-size: 13px;
     color: var(--grey);
     line-height: 1.6;
+    padding-left: 36px;
   }
 
-  /* CTA bottom */
+  /* ── CTA BLOCK — inverted gold ── */
   .cta-block {
-    background: var(--black-2);
-    border: 1px solid rgba(245,168,0,0.2);
-    padding: 32px;
+    background: var(--gold);
+    padding: 40px 32px;
     text-align: center;
     position: relative;
     overflow: hidden;
     margin-top: 24px;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
   }
 
-  .cta-block::after {
+  .cta-block::before {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    inset: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(0,0,0,0.03) 10px,
+      rgba(0,0,0,0.03) 20px
+    );
   }
 
   .cta-label {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 8px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.05em;
+    color: var(--black);
+    margin-bottom: 6px;
   }
 
   .cta-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
-    color: var(--white);
-    margin-bottom: 6px;
+    font-size: 36px;
+    color: var(--black);
+    line-height: 1;
+    margin-bottom: 8px;
   }
 
   .cta-sub {
-    font-family: 'Barlow', sans-serif;
-    font-size: 13px;
-    color: var(--grey);
-    margin-bottom: 20px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.05em;
+    color: var(--black);
+    margin-bottom: 24px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .btn-cta-dark {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    background: var(--black);
+    border: none;
+    padding: 14px 40px;
+    cursor: pointer;
+    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-cta-dark:hover {
+    background: #1a1a1a;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   }
 
   /* ── FOOTER ── */
@@ -1026,13 +1139,23 @@
     </div>
   </div>
 
+  <!-- Results divider -->
+  <div class="results-divider" id="results-divider">
+    <div class="results-divider-line"></div>
+    <div class="results-divider-label">RÉSULTATS DE L'ANALYSE</div>
+    <div class="results-divider-line right"></div>
+  </div>
+
   <!-- Results -->
   <div class="results-block" id="results-block">
-    <div class="score-header">
-      <div class="score-top">
-        <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey);margin-bottom:4px;">Score Global</div>
-          <div style="display:flex;align-items:baseline;gap:4px;">
+    <div class="score-header" id="score-header">
+      <div class="score-circle-wrap">
+        <div class="score-ring">
+          <svg viewBox="0 0 140 140">
+            <circle class="score-ring-bg" cx="70" cy="70" r="56"/>
+            <circle class="score-ring-fill" id="score-ring-fill" cx="70" cy="70" r="56"/>
+          </svg>
+          <div class="score-ring-inner">
             <div class="score-num" id="score-total">—</div>
             <div class="score-denom">/100</div>
           </div>
@@ -1059,9 +1182,9 @@
 
     <div class="cta-block">
       <div class="cta-label">Prochaine étape</div>
-      <div class="cta-title">La solution complète t'attend</div>
-      <div class="cta-sub">Les corrections exactes sont dans The Site Access</div>
-      <a href="https://www.skool.com/mining-elite" target="_blank" class="btn-primary">Rejoindre The Site Access</a>
+      <div class="cta-title">Chaque semaine sans rentrer en mines = une payslip à 3 500$ que t'encaisses pas.</div>
+      <div class="cta-sub">T'as plus le temps d'attendre.</div>
+      <a href="https://www.instagram.com/buildnotborn.fifo" target="_blank" class="btn-cta-dark">Me contacter sur Instagram →</a>
     </div>
   </div>
 </section>
@@ -1131,12 +1254,24 @@
   }
 
   function renderResults(data) {
-    const total = data.global_score ?? data.scores?.total ?? 0;
-    document.getElementById('score-total').textContent = total;
+    const score = data.global_score ?? 0;
+
+    // Score color
+    const scoreColor = score >= 75 ? '#34C759' : score >= 50 ? '#FF9500' : '#FF3B30';
+    document.documentElement.style.setProperty('--score-color', scoreColor);
+
+    // Circular ring animation
+    document.getElementById('score-total').textContent = score || '—';
+    const ringFill = document.getElementById('score-ring-fill');
+    const circumference = 351;
+    const offset = circumference - (score / 100) * circumference;
+    setTimeout(() => { ringFill.style.strokeDashoffset = offset; }, 100);
+
+    // Verdict
     const verdict = document.getElementById('score-verdict');
     verdict.textContent = data.verdict ?? '';
-    verdict.style.color = (total >= 75) ? 'var(--ok)' : (total >= 50) ? 'var(--warning)' : 'var(--danger)';
 
+    // Sub-scores
     const fmt = data.scores?.format ?? 0;
     const kw = data.scores?.keywords ?? 0;
     const comp = data.scores?.completeness ?? 0;
@@ -1147,16 +1282,23 @@
     animateBar('bar-kw', (kw/40)*100);
     animateBar('bar-comp', (comp/20)*100);
 
+    // Issues with stagger
     const issuesList = document.getElementById('issues-list');
     issuesList.innerHTML = '';
-    (data.issues ?? []).forEach(issue => {
+    const iconMap = { critical: '⛔', warning: '⚠️', minor: '🔧' };
+    const badgeMap = { critical: 'BLOQUANT', warning: 'À CORRIGER', minor: 'OPTIMISATION' };
+    (data.issues ?? []).forEach((issue, i) => {
       const sev = issue.severity ?? 'minor';
-      const badgeMap = { critical: 'BLOQUANT', warning: 'À CORRIGER', minor: 'OPTIMISATION' };
       const card = document.createElement('div');
       card.className = `issue-card ${sev}`;
+      card.style.animationDelay = `${i * 0.08}s`;
       card.innerHTML = `
         <div class="issue-top">
-          <div class="issue-title">${issue.title ?? ''}</div>
+          <div class="issue-left">
+            <span class="issue-num">0${i+1}</span>
+            <span class="issue-icon">${iconMap[sev]}</span>
+            <div class="issue-title">${issue.title ?? ''}</div>
+          </div>
           <div class="issue-badge ${sev}">${badgeMap[sev] ?? sev}</div>
         </div>
         <div class="issue-desc">${issue.desc ?? ''}</div>
@@ -1164,6 +1306,8 @@
       issuesList.appendChild(card);
     });
 
+    // Show divider + results
+    document.getElementById('results-divider').classList.add('active');
     resultsBlock.classList.add('active');
     resultsBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
