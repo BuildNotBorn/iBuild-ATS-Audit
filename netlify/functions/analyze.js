@@ -94,7 +94,7 @@ ORTHOGRAPHE OBLIGATOIRE : utilise le français complet avec tous les accents (é
  
 Tu réponds UNIQUEMENT avec un objet JSON sur UNE SEULE LIGNE. Zéro saut de ligne dans les strings. Zéro markdown. Zéro backticks. Zéro texte avant ou après le JSON.`;
  
-    const analysisPrompt = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia.
+    const analysisPrompt = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia. Nous sommes en ${month}/${year}. Une date est incohérente UNIQUEMENT si elle est strictement supérieure à ${month}/${year} — par exemple 07/${year} ou 01/${year + 1} seraient impossibles. Les dates passées de l'année ${year} comme 01/${year}, 02/${year}, 03/${year} sont valides et ne doivent PAS être flaggées comme incohérences.
  
 Évalue sur 3 critères :
 1. FORMAT PARSEABILITY sur 40pts : colonnes multiples, tableaux, éléments graphiques, icônes, couleurs, mise en page complexe, template Canva
