@@ -1,4 +1,12 @@
 const mammoth = require('mammoth');
+ 
+function getCurrentDateStr() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+  return { month, year };
+}
+ 
 async function checkRateLimit(ip) {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -18,11 +26,11 @@ async function checkRateLimit(ip) {
   
   return true;
 }
-
+ 
 exports.handler = async (event) => {
   console.log('BODY LENGTH:', event.body ? event.body.length : 'null');
   console.log('BODY START:', event.body ? event.body.substring(0, 200) : 'null');
-
+ 
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -33,65 +41,72 @@ exports.handler = async (event) => {
       body: ''
     };
   }
-
+ 
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
-
+ 
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Content-Type': 'application/json'
   };
-
+ 
   const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
   const allowed = await checkRateLimit(ip);
   if (!allowed) {
     return { statusCode: 429, headers, body: JSON.stringify({ error: 'rate_limit' }) };
   }
-
+ 
   let rawText = 'NOT_YET_ASSIGNED';
-
+ 
   try {
     const body = JSON.parse(event.body);
     const { cvImage, cvPdf, cvDocx, jobLabel } = body;
-
-    const systemPrompt = `Tu es un expert ATS spécialisé dans le marché FIFO mining Western Australia. Tu analyses des CV de candidats WHV francophones qui veulent entrer dans le mining australien. Ton analyse est basée sur 4700+ annonces Seek WA réelles.
-
+ 
+    const { month, year } = getCurrentDateStr();
+ 
+    const systemPrompt = `Tu es un expert ATS spécialisé dans le marché FIFO mining Western Australia. Nous sommes en ${month}/${year} — toute date de CV postérieure à ${year} est une incohérence critique à signaler immédiatement.
+ 
+GÉOGRAPHIE AUSTRALIENNE — RÈGLE ABSOLUE :
+- SA = South Australia (pas South Africa). Villes SA : Olympic Dam, Port Pirie, Roxby Downs, Adelaide, Whyalla.
+- WA = Western Australia. NT = Northern Territory. QLD = Queensland. NSW = New South Wales. VIC = Victoria. TAS = Tasmania.
+- Ne confonds JAMAIS une abréviation d'État australien avec un pays étranger. Un candidat qui a travaillé à Olympic Dam SA a travaillé en AUSTRALIE, pas en Afrique du Sud.
+ 
 RÈGLES DE LANGAGE ABSOLUES :
 - Écris comme si tu parlais à quelqu'un qui ne connaît pas les RH ni les ATS
 - Zéro jargon technique sans explication : si tu écris "ATS" dis aussi "logiciel de tri automatique"
 - Phrases courtes. Maximum 2 phrases par description.
 - Ton direct, sans condescendance. Pas de "malheureusement", pas de "il serait préférable"
 - La première phrase dit LE PROBLÈME CONCRET. La deuxième dit POURQUOI ÇA BLOQUE.
-
+ 
 RÈGLE ABSOLUE SUR LES SOLUTIONS :
 - Tu identifies les problèmes avec précision et honnêteté
 - Tu nommes exactement ce qui cloche
 - Tu ne donnes JAMAIS la solution exacte ni les étapes pour corriger
 - La solution complète est dans The Site Access ou en DM @BuildNotBorn.FiFo
-
+ 
 SÉVÉRITÉ — utilise exactement ces valeurs :
 - "critical" + tag "BLOQUANT" : le CV est rejeté automatiquement à cause de ça
 - "warning" + tag "À CORRIGER" : réduit fortement les chances, pas éliminatoire
 - "minor" + tag "OPTIMISATION" : impact moindre mais corrigeable facilement
-
+ 
 ORTHOGRAPHE OBLIGATOIRE : utilise le français complet avec tous les accents (é, è, ê, à, ù, û, ô, î, ç) dans TOUTES les valeurs du JSON — title, desc, verdict, improvement_areas.
-
+ 
 Tu réponds UNIQUEMENT avec un objet JSON sur UNE SEULE LIGNE. Zéro saut de ligne dans les strings. Zéro markdown. Zéro backticks. Zéro texte avant ou après le JSON.`;
-
+ 
     const analysisPrompt = `Analyse ce CV pour un poste de ${jobLabel} en FIFO Western Australia.
-
+ 
 Évalue sur 3 critères :
 1. FORMAT PARSEABILITY sur 40pts : colonnes multiples, tableaux, éléments graphiques, icônes, couleurs, mise en page complexe, template Canva
 2. KEYWORD DENSITY sur 40pts : keywords critiques pour ${jobLabel} mining WA, vocabulaire terrain australien, codes tickets officiels, ANZSCO
 3. SECTION COMPLETENESS sur 20pts : sections obligatoires, tickets avec codes, expérience pertinente, références australiennes
-
+ 
 CV Canva 2 colonnes = format automatiquement inférieur à 15 sur 40 en format.
 Un CV Word ou PDF une colonne sobre sans graphiques peut scorer 30-38 sur 40 en format.
 Ne pénalise PAS ce qui n'est pas visible dans le CV — note uniquement ce qui est réellement problématique.
-
+ 
 Identifie 4 à 6 problèmes réels et spécifiques à CE CV.
-
+ 
 RÈGLES DE RÉDACTION DES PROBLÈMES :
 - title : nom du problème en langage simple, 6-10 mots max, pas de jargon seul
 - desc : 2 phrases max. Phrase 1 = ce qui est concrètement absent ou cassé dans CE CV. Phrase 2 = pourquoi ça bloque dans le processus de recrutement FIFO WA. Pas de solution. Pas d'étapes.
@@ -103,7 +118,7 @@ RÈGLES POUR improvement_areas :
 - Format : "Ce que ça concerne (sans solution) — détails dans The Site Access"
 - Exemple correct : "Restructuration complète du format pour être lu par les ATS — détails dans The Site Access"
 - Exemple interdit : "Convertir en une colonne en supprimant les zones latérales"
-
+ 
 Réponds avec exactement ce JSON :
 {
   "scores": {"format": 12, "keywords": 8, "completeness": 10, "total": 30},
@@ -122,11 +137,11 @@ Réponds avec exactement ce JSON :
     "Zone identifiée sans solution — détails dans The Site Access"
   ]
 }
-
+ 
 Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à un RH.`;
-
+ 
     let content;
-
+ 
     if (cvDocx) {
       try {
         const buffer = Buffer.from(cvDocx, 'base64');
@@ -145,9 +160,8 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
           })
         };
       }
-
+ 
     } else if (cvPdf) {
-      // Vérifie la signature PDF (%PDF- en base64 = JVBER)
       if (!cvPdf.trimStart().startsWith('JVBER')) {
         return {
           statusCode: 200,
@@ -164,9 +178,8 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: cvPdf } },
         { type: 'text', text: analysisPrompt }
       ];
-
+ 
     } else if (cvImage) {
-      // Détecte le type image depuis la signature base64
       let mediaType = 'image/jpeg';
       if (cvImage.startsWith('iVBOR')) mediaType = 'image/png';
       else if (cvImage.startsWith('R0lGO')) mediaType = 'image/gif';
@@ -175,7 +188,7 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
         { type: 'image', source: { type: 'base64', media_type: mediaType, data: cvImage } },
         { type: 'text', text: analysisPrompt }
       ];
-
+ 
     } else {
       return {
         statusCode: 200,
@@ -188,13 +201,13 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
         })
       };
     }
-
+ 
     const requestHeaders = {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     };
-
+ 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: requestHeaders,
@@ -205,11 +218,10 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
         messages: [{ role: 'user', content }]
       })
     });
-
+ 
     if (!response.ok) {
       const errText = await response.text();
       console.error('Anthropic API error:', response.status, errText);
-      // PDF corrompu : Anthropic retourne 400 quand il ne peut pas parser le document
       const isPDFContent = Array.isArray(content) && content[0]?.type === 'document';
       if (isPDFContent && (response.status === 400 || response.status === 422)) {
         return {
@@ -225,12 +237,11 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
       }
       throw new Error('API error ' + response.status + ': ' + errText);
     }
-
+ 
     const data = await response.json();
     rawText = data.content[0].text.trim();
     console.log('RAW HAIKU RESPONSE:', rawText.substring(0, 800));
-
-    // Sanitise tous les caracteres qui cassent JSON.parse
+ 
     const text = rawText
       .replace(/[\u2018\u2019]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
@@ -239,7 +250,7 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
       .replace(/\n/g, ' ')
       .replace(/\r/g, ' ')
       .replace(/\t/g, ' ');
-
+ 
     let result;
     try {
       result = JSON.parse(text);
@@ -257,20 +268,20 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
         throw new Error('Aucun JSON detecte dans la reponse');
       }
     }
-
+ 
     result.scores.total = Math.min(100,
       (result.scores.format || 0) +
       (result.scores.keywords || 0) +
       (result.scores.completeness || 0)
     );
     result.global_score = result.scores.total;
-
+ 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify(result)
     };
-
+ 
   } catch (err) {
     console.error('Function error:', err.message);
     return {
