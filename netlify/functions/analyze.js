@@ -105,7 +105,7 @@ Tu réponds UNIQUEMENT avec un objet JSON sur UNE SEULE LIGNE. Zéro saut de lig
 Évalue sur 3 critères :
 1. FORMAT PARSEABILITY sur 40pts : colonnes multiples, tableaux, éléments graphiques, icônes, couleurs, mise en page complexe, template Canva
 2. KEYWORD DENSITY sur 40pts : keywords critiques pour ${jobLabel} mining WA, vocabulaire terrain australien, codes tickets officiels, ANZSCO
-3. SECTION COMPLETENESS sur 20pts : sections obligatoires, tickets avec codes, expérience pertinente, références australiennes
+3. SECTION COMPLETENESS sur 20pts : sections obligatoires, tickets avec codes, expérience pertinente, références australiennes — RÈGLE ABSOLUE : toute expérience dans n'importe quel État australien (WA, SA, QLD, NT, NSW, VIC, TAS) compte comme expérience australienne valide et ne doit PAS être pénalisée. SA = South Australia = Australie. Olympic Dam, Port Pirie, Roxby Downs = sites miniers australiens légitimes.
  
 CV Canva 2 colonnes = format automatiquement inférieur à 15 sur 40 en format.
 Un CV Word ou PDF une colonne sobre sans graphiques peut scorer 30-38 sur 40 en format.
