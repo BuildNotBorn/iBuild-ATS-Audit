@@ -1,5 +1,18 @@
 const mammoth = require('mammoth');
 
+async function verifyTurnstile(token, ip) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return true;
+  if (!token) return false;
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret, response: token, remoteip: ip })
+  });
+  const data = await res.json();
+  return data.success === true;
+}
+
 function sanitizeJobLabel(label) {
   if (typeof label !== 'string') return 'Mineur généraliste';
   return label.replace(/[\n\r\t<>{}\\]/g, ' ').slice(0, 100).trim() || 'Mineur généraliste';
@@ -65,6 +78,13 @@ exports.handler = async (event) => {
   };
  
   const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
+
+  const body0 = JSON.parse(event.body || '{}');
+  const turnstileOk = await verifyTurnstile(body0.cfTurnstileToken, ip);
+  if (!turnstileOk) {
+    return { statusCode: 403, headers, body: JSON.stringify({ error: 'Challenge de sécurité échoué. Recharge la page et réessaie.' }) };
+  }
+
   const allowed = await checkRateLimit(ip);
   if (!allowed) {
     return { statusCode: 429, headers, body: JSON.stringify({ error: 'rate_limit' }) };
