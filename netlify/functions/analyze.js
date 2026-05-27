@@ -38,6 +38,12 @@ exports.handler = async (event) => {
  
   const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
 
+  // Reject requests missing the shared frontend secret
+  const functionSecret = process.env.FUNCTION_SECRET;
+  if (functionSecret && event.headers['x-function-secret'] !== functionSecret) {
+    return { statusCode: 401, headers: { 'Access-Control-Allow-Origin': allowedOrigin }, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
