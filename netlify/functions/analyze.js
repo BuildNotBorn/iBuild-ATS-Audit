@@ -1,5 +1,10 @@
 const mammoth = require('mammoth');
- 
+
+function sanitizeJobLabel(label) {
+  if (typeof label !== 'string') return 'Mineur généraliste';
+  return label.replace(/[\n\r\t<>{}\\]/g, ' ').slice(0, 100).trim() || 'Mineur généraliste';
+}
+
 function getCurrentDateStr() {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -31,23 +36,25 @@ exports.handler = async (event) => {
   console.log('BODY LENGTH:', event.body ? event.body.length : 'null');
   console.log('BODY START:', event.body ? event.body.substring(0, 200) : 'null');
  
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Headers': 'Content-Type'
       },
       body: ''
     };
   }
- 
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
- 
+
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Content-Type': 'application/json'
   };
  
@@ -61,7 +68,8 @@ exports.handler = async (event) => {
  
   try {
     const body = JSON.parse(event.body);
-    const { cvImage, cvPdf, cvDocx, jobLabel } = body;
+    const { cvImage, cvPdf, cvDocx } = body;
+    const jobLabel = sanitizeJobLabel(body.jobLabel);
  
     const { month, year } = getCurrentDateStr();
  
@@ -293,7 +301,7 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ error: 'Une erreur interne est survenue. Réessaie dans quelques instants.' })
     };
   }
 };
