@@ -3,3 +3,4 @@ node_modules/
 .claude/
 cv_test_fitter.pdf
 generate_cv.py
+CONTEXT.md
