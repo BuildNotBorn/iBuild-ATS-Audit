@@ -47,7 +47,6 @@ async function checkRateLimit(ip) {
  
 exports.handler = async (event) => {
   console.log('BODY LENGTH:', event.body ? event.body.length : 'null');
-  console.log('BODY START:', event.body ? event.body.substring(0, 200) : 'null');
  
   const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
 
@@ -280,7 +279,7 @@ Sois honnête et spécifique. Ne flatte pas. Parle comme à un ami, pas comme à
  
     const data = await response.json();
     rawText = data.content[0].text.trim();
-    console.log('RAW HAIKU RESPONSE:', rawText.substring(0, 800));
+    console.log('HAIKU RESPONSE LENGTH:', rawText.length);
  
     const text = rawText
       .replace(/[\u2018\u2019]/g, "'")
